@@ -1,7 +1,0 @@
-{
-    // 推送推荐安装插件列表（VS Code）
-    "recommendations": [
-        // Formatting: prettier
-        "esbenp.prettier-vscode"
-    ]
-}
