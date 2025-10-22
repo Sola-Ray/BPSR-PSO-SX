@@ -35,7 +35,7 @@ Thanks to both authors for laying the groundwork for this extended variant.
 ### Prerequisites  
 You will need the following installed on your machine:  
 - Node.js (and npm)  
-- Npcap (for packet capture) — see the `resources` folder for installer.
+- [Npcap](https://npcap.com/#download) (for packet capture)
 
 ### Installation  
 1. Clone the repository:  
