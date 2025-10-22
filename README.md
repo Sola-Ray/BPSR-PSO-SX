@@ -1,51 +1,88 @@
-# BPSR-PSO
+# BPSR-PSO-SX (Sola Extended)
 
-**Forked from:** https://github.com/dmlgzs/StarResonanceDamageCounter
+> A modified and extended version of BPSR-PSO built for Blue Protocol — the “SX” stands for *Sola Extended*.
 
-Blue Protocol: Star Resonance - Per Second Overlay
-Provides a useful GUI to track DPS / HPS for nearby players
+## Table of Contents
+- [About](#about)  
+- [Origins & Acknowledgements](#origins--acknowledgements)  
+- [Features](#features)  
+- [Getting Started](#getting-started)  
+  - [Prerequisites](#prerequisites)  
+  - [Installation](#installation)  
+  - [Running the Application](#running-the-application)  
+- [Usage](#usage)  
+- [Contributing](#contributing)  
+- [License](#license)  
 
-## About the Project
+## About  
+BPSR-PSO-SX is an overlay / monitoring tool for Blue Protocol that tracks player performance metrics such as DPS/HPS on a per-second basis and provides extended functionality over the original toolset.
 
-This is a standalone application and does not interface with BPSR or modify any of its files. It analyzes packet while in transit. 
+## Origins & Acknowledgements  
+This project is based on and builds upon the work of two prior projects:  
+- [StarResonanceDamageCounter](https://github.com/dmlgzs/StarResonanceDamageCounter) — originally designed for Blue Protocol, providing DPS/HPS tracking.  
+- [BPSR-PSO](https://github.com/Chase-Simmons/BPSR-PSO.git) by Chase Simmons — a forkable version of the above, providing the base architecture for this project.
 
-## Getting Started
+Thanks to both authors for laying the groundwork for this extended variant.
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+## Features  
+- Real-time DPS (damage per second) and HPS (healing per second) metrics.  
+- Overlay view that updates dynamically for nearby players.  
+- Extended tracking, logging, and customization options (*Sola Extended* features).  
+- Packet interception and analysis (no modification of the game or BPSR files).  
+- … *(Add additional bullet points here describing the unique features your version provides.)*
 
-### Prerequisites
+## Getting Started  
 
-You'll need to have the following software installed:
+### Prerequisites  
+You will need the following installed on your machine:  
+- Node.js (and npm)  
+- Npcap (for packet capture) — see the `resources` folder for installer.
 
-* **Node.js**: <https://nodejs.org/>
-* **npm**: Comes bundled with Node.js.
-* **Npcap**: The installer is located in the `/resources` folder of this repository.
+### Installation  
+1. Clone the repository:  
+   ```bash
+   git clone https://github.com/Sola-Ray/BPSR-PSO-SX.git
+   ```
+2. Change into the project directory:  
+   ```bash
+   cd BPSR-PSO-SX
+   ```
+3. Install Npcap:  
+   ```bash
+   cd resources
+   # Run the installer and make sure to enable “Install Npcap in WinPcap API-compatible Mode”
+   cd ..
+   ```
+4. Install Node.js dependencies:  
+   ```bash
+   npm install
+   ```
 
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Chase-Simmons/BPSR-PSO.git
-    ```
-
-2.  **Navigate into the project directory:**
-    ```bash
-    cd BPSR-PSO
-    ```
-
-3.  **Install Npcap:**
-    * Navigate to the `resources` folder: `cd resources`
-    * Run the Npcap installer. Be sure to select the option to **"Install Npcap in WinPcap API-compatible Mode"** during installation.
-    * After installation, return to the project root: `cd ..`
-
-4.  **Install Node.js dependencies:**
-    ```bash
-    npm install
-    ```
-
-## Running the Application
-
-To start the application, run the following command from the project root:
-
+### Running the Application  
 ```bash
 npm start
+```
+
+The overlay should launch and begin monitoring packets from the game client.
+
+## Usage  
+- Start the game and launch the overlay.  
+- Ensure Npcap is installed and has permissions to capture.  
+- Use the overlay to monitor DPS/HPS and other tracked metrics in real time.  
+- *(You may include screenshots, configuration instructions, hotkeys, customizations, etc.)*
+
+## Contributing  
+We welcome contributions! If you’d like to help improve or extend the project:  
+- Fork this repository.  
+- Create a new feature branch (`git checkout -b feature/YourFeature`).  
+- Commit your changes and submit a pull request.  
+- Be sure to document any new configuration options or breaking changes.
+
+Please follow standard Node.js/JavaScript style guidelines and add tests where applicable.
+
+## License  
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) — see the [LICENSE.txt](LICENSE.txt) file for details.
+
+---
+
+Thank you for using **BPSR-PSO-SX** — happy raiding and tracking!
