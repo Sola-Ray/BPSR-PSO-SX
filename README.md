@@ -62,8 +62,7 @@ The overlay should launch and begin monitoring packets from the game client.
 ## Usage  
 - Start the game and launch the overlay.  
 - Ensure Npcap is installed and has permissions to capture.  
-- Use the overlay to monitor DPS/HPS and other tracked metrics in real time.  
-- *(You may include screenshots, configuration instructions, hotkeys, customizations, etc.)*
+- Use the overlay to monitor DPS/HPS and other tracked metrics in real time.
 
 ## Contributing  
 We welcome contributions! If you’d like to help improve or extend the project:  
