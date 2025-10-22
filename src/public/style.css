@@ -1,0 +1,593 @@
+﻿/* === Global Styles & Resets === */
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto Condensed', sans-serif;
+    background-color: transparent;
+    user-select: none;
+    color: #e0e0e0;
+    font-size: 12px;
+    box-sizing: border-box;
+    min-width: 256px;
+    -webkit-font-smoothing: antialiased;
+}
+
+:root {
+    --main-bg-opacity: 0.05;
+}
+
+#app-wrapper {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.main-container {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(48, 51, 53, var(--main-bg-opacity));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* === Columns / Data Items === */
+.columns-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2px;
+    min-width: 0;
+    gap: 2px; /* propre et sans bug de marges empilées */
+}
+
+    /* Chrome, Edge, Safari */
+    .columns-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .columns-container::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
+
+    .columns-container::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.3);
+        border-radius: 4px;
+        border: 2px solid rgba(0,0,0,0.1);
+    }
+
+        .columns-container::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255,255,255,0.5);
+        }
+.data-item {
+    flex-shrink: 0;
+    margin: 0; /* supprime l'espace entre les items */
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: none; /* supprime l'effet de brillance blanche */
+    position: relative;
+    background-clip: padding-box;
+}
+
+    .data-item::before {
+        transition: background 0.2s;
+    }
+
+    .data-item:hover::before {
+        background: rgba(255,255,255,0.05);
+    }
+
+    .data-item:hover .dps-bar-fill {
+        transition: none !important;
+    }
+
+/* === Main DPS Bar === */
+.main-bar {
+    position: relative;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.dps-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.4s ease-in-out;
+    opacity: 0.9;
+    z-index: 1;
+}
+
+.sub-bar {
+    position: relative;
+    height: 10px;
+    border-radius: 0 0 8px 8px;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+
+.hps-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    opacity: 0.8;
+    transition: width 0.4s ease-in-out;
+}
+
+.hps-stats {
+    position: absolute;
+    right: 6px;
+    top: 0;
+    font-size: 11px;
+    color: #ddd;
+    text-shadow: 0 0 3px rgba(0,0,0,0.6);
+}
+
+/* === Content (text + icons) === */
+.content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    height: 100%;
+    width: 100%;
+    z-index: 2;
+}
+
+.class-icon, .spec-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    object-fit: contain;
+}
+
+.spec-icon {
+    opacity: 0.8;
+}
+
+.name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+.stats {
+    font-size: 13px;
+    font-weight: 500;
+    color: #ddd;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+}
+
+.rank {
+    font-weight: 700;
+    width: 24px;
+    text-align: right;
+    margin-right: 4px;
+}
+
+/* === Class Colors / Glow === */
+.wind_knight .dps-bar-fill {
+    background: linear-gradient(90deg, #4aff5a, #2fb032);
+}
+
+.stormblade .dps-bar-fill {
+    background: linear-gradient(90deg, #a155ff, #7b2fff);
+}
+
+.frost_mage .dps-bar-fill {
+    background: linear-gradient(90deg, #00b4ff, #0066ff);
+}
+
+.heavy_guardian .dps-bar-fill {
+    background: linear-gradient(90deg, #ff884a, #ff442f);
+}
+
+.shield_knight .dps-bar-fill {
+    background: linear-gradient(90deg, #ffd84a, #ffb32f);
+}
+
+.marksman .dps-bar-fill {
+    background: linear-gradient(90deg, #ffaa4a, #ff7f00);
+}
+
+.soul_musician .dps-bar-fill {
+    background: linear-gradient(90deg, #00ffc8, #00a685);
+}
+
+.verdant_oracle .dps-bar-fill {
+    background: linear-gradient(90deg, #6cff94, #22b94c);
+}
+
+[data-class="wind_knight"] {
+    text-shadow: 0 0 6px #4aff5a;
+}
+
+[data-class="stormblade"] {
+    text-shadow: 0 0 6px #a155ff;
+}
+
+[data-class="frost_mage"] {
+    text-shadow: 0 0 6px #00b4ff;
+}
+
+[data-class="heavy_guardian"] {
+    text-shadow: 0 0 6px #ff884a;
+}
+
+[data-class="shield_knight"] {
+    text-shadow: 0 0 6px #ffd84a;
+}
+
+[data-class="marksman"] {
+    text-shadow: 0 0 6px #ffaa4a;
+}
+
+[data-class="soul_musician"] {
+    text-shadow: 0 0 6px #00ffc8;
+}
+
+[data-class="verdant_oracle"] {
+    text-shadow: 0 0 6px #6cff94;
+}
+
+/* === Hidden Utility === */
+.hidden {
+    display: none !important;
+}
+
+.controls {
+    -webkit-app-region: drag;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(18, 21, 23, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    height: 25px;
+    min-height: 25px;
+}
+
+/* === Button Styles for Controls (Adjusted Padding) === */
+.button-group {
+    display: flex;
+    gap: 6px; /* espace horizontal entre boutons */
+    -webkit-app-region: no-drag;
+}
+
+    .button-group button {
+        -webkit-app-region: no-drag;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 10px; /* padding uniforme pour tous les boutons */
+        border-radius: 6px;
+        cursor: pointer;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+    }
+
+        /* Icon buttons (help/settings/close) - padding harmonisé */
+        .button-group button#helpButton,
+        .button-group button#settingsButton,
+        .button-group button#closeButton {
+            padding: 6px 10px; /* même que les autres pour uniformité */
+            font-size: 14px;
+            min-width: 28px;
+        }
+
+        /* Hover Effect */
+        .button-group button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+        }
+
+        /* Active / Clicked Effect */
+        .button-group button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+        }
+
+        /* Disabled state */
+        .button-group button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+/* Close button styling */
+#closeButton {
+    background-color: rgba(255, 0, 0, 0.4);
+    border-color: rgba(255, 0, 0, 0.6);
+}
+
+    #closeButton:hover {
+        background-color: rgba(255, 0, 0, 0.6);
+        box-shadow: 0 0 8px rgba(255,0,0,0.5);
+    }
+
+.tabs {
+    display: flex;
+    gap: 4px;
+    margin: 4px 0;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+    .tab-button.active {
+        background: rgba(255,255,255,0.25);
+    }
+
+    .tab-button:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+li::marker {
+    content: none;
+}
+
+/* Spell Popup (nouvelle UI) */
+.spell-popup {
+    position: fixed;
+    top: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px;
+    max-height: 70vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    background: rgba(20,22,24,0.92);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+    .spell-popup .popup-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+        user-select: none;
+        cursor: default;
+    }
+
+        .spell-popup .popup-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+    .spell-popup .popup-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .spell-popup .popup-actions .close-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            border-radius: 6px;
+        }
+
+            .spell-popup .popup-actions .close-btn:hover {
+                background: rgba(255,255,255,0.12);
+            }
+
+#spellSearch {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.25);
+    color: #fff;
+    outline: none;
+    width: 160px;
+}
+
+    #spellSearch::placeholder {
+        color: rgba(255,255,255,0.6);
+    }
+
+.spell-popup .popup-body {
+    overflow: auto;
+    padding: 8px 12px;
+}
+
+/* Summary chips */
+.spell-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.spell-chip {
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    font-size: 11px;
+}
+
+/* Table */
+.table-wrap {
+    overflow: auto;
+    border-radius: 8px;
+}
+
+.spell-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+}
+
+    .spell-table thead th {
+        position: sticky;
+        top: 0;
+        background: rgba(0,0,0,0.35);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        text-align: left;
+        padding: 6px 8px;
+        font-weight: 700;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+        .spell-table thead th:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+    .spell-table tbody td {
+        padding: 6px 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        vertical-align: middle;
+    }
+
+.col-damage, .col-share, .col-hits, .col-crit, .col-avg {
+    width: 72px;
+    text-align: right;
+}
+
+.spell-row-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 160px;
+}
+
+.spell-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset;
+}
+
+.spell-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Bar */
+.spell-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    margin-top: 3px;
+}
+
+    .spell-bar > .fill {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #65d06e, #2a8f4a);
+        transition: width 0.35s ease;
+    }
+
+/* Footer */
+.spell-popup .popup-footer {
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    color: #cfcfcf;
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Tri visuel */
+.th-sort-asc::after {
+    content: "▲";
+    margin-left: 6px;
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.th-sort-desc::after {
+    content: "▼";
+    margin-left: 6px;
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.spell-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    margin-left: 8px;
+    padding: 2px;
+    border-radius: 4px;
+    transition: color 0.15s ease, background 0.15s ease;
+    transform: translateZ(0); /* force layer compositing (évite flicker GPU) */
+}
+
+    .spell-btn:hover {
+        color: #fff;
+        background: rgba(255,255,255,0.1);
+    }
+
+    .spell-btn svg {
+        display: block;
+        pointer-events: none;
+    }

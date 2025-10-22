@@ -1,0 +1,79 @@
+{
+    "name": "bpsr_pso",
+    "productName": "BPSR PSO",
+    "version": "2.0.1",
+    "description": "Blue Protocol: Star Resonance - Per Second Overlay",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "electron-forge start",
+        "package": "electron-forge package",
+        "make": "electron-forge make",
+        "publish": "electron-forge publish",
+        "lint": "echo \"No linting configured\"",
+        "format": "prettier --write \"**/*.{js,json,html}\"",
+        "check-format": "prettier --check \"**/*.{js,json,html}\""
+    },
+    "config": {
+        "forge": {
+            "packagerConfig": {
+                "name": "BPSR PSO",
+                "icon": "./resources/app.ico",
+                "extraResources": [
+                    "./resources/npcap-1.83.exe",
+                    "./README.md"
+                ]
+            },
+            "makers": [
+                {
+                    "name": "@electron-forge/maker-zip",
+                    "platforms": [
+                        "darwin",
+                        "linux",
+                        "win32"
+                    ]
+                },
+                {
+                    "name": "@electron-forge/maker-squirrel",
+                    "config": {
+                        "setupIcon": "./resources/app.ico",
+                        "loadingGif": "./resources/installer.gif",
+                        "createDesktopShortcut": true,
+                        "extraFiles": [
+                            "./resources/npcap-1.83.exe",
+                            "./README.md"
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    "keywords": [],
+    "author": {
+        "name": "Kami from BPSR",
+        "email": "Csim6890@gmail.com"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "cap": "^0.2.1",
+        "cors": "^2.8.5",
+        "electron-squirrel-startup": "^1.0.1",
+        "express": "^5.1.0",
+        "google-protobuf": "^3.21.4",
+        "long": "^5.3.2",
+        "protobufjs": "^7.5.3",
+        "socket.io": "^4.8.1",
+        "winston": "^3.17.0"
+    },
+    "devDependencies": {
+        "@electron-forge/cli": "^7.8.3",
+        "@electron-forge/maker-deb": "^7.8.3",
+        "@electron-forge/maker-rpm": "^7.8.3",
+        "@electron-forge/maker-squirrel": "^7.8.3",
+        "@electron-forge/maker-zip": "^7.8.3",
+        "@electron-forge/plugin-auto-unpack-natives": "^7.8.3",
+        "@electron-forge/plugin-fuses": "^7.8.3",
+        "@electron/fuses": "^1.8.0",
+        "electron": "37.3.1",
+        "prettier": "^3.6.2"
+    }
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BPSR-PSO-SX</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap"
+          rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="app-wrapper">
+        <div class="main-container">
+            <div class="controls">
+                <div class="title-container">
+                    <div id="serverStatus" class="status-indicator"></div>
+                    <span class="app-title">BPSR-PSO-SX</span>
+                </div>
+                <div class="button-group">
+                    <button id="clearButton" onclick="clearData()" title="Clear Data">Clear</button>
+                    <button id="pauseButton" onclick="togglePause()" title="Pause/Resume">Pause</button>
+                    <button id="helpButton" onclick="toggleHelp()" title="Help">❓</button>
+                    <button id="settingsButton" onclick="toggleSettings()" title="Settings">⚙️</button>
+                    <button id="closeButton" onclick="closeClient()" title="Close Client">X</button>
+                    <span id="passthroughTitle" class="passthrough-title hidden"> Passthrough Enabled </span>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-button active" data-tab="dps">DPS</button>
+                <button class="tab-button" data-tab="heal">Heal</button>
+                <button class="tab-button" data-tab="tank">Tank</button>
+            </div>
+
+            <!-- DPS/Heal/Tank Entries will be inserted dynamically -->
+            <div id="columnsContainer" class="columns-container"></div>
+
+
+            <div id="settingsContainer" class="settings-container hidden">
+                <div class="settings-option">
+                    <label for="opacitySlider">Background Opacity</label>
+                    <input type="range" id="opacitySlider" min="0" max="1" step="0.05" value="0.05" />
+                </div>
+            </div>
+
+            <div id="helpContainer" class="help-container hidden">
+                <h2>Keyboard Shortcuts</h2>
+                <ul>
+                    <li><strong>Toggle Mouse Pass-through:</strong><br /><code>Control+`</code></li>
+                    <li><strong>Minimize Window Content:</strong><br /><code>Control+Alt+Z</code></li>
+                    <li><strong>Resize Window:</strong><br /><code>Control + Arrow Keys</code></li>
+                    <li><strong>Move Window:</strong><br /><code>Control + Alt + Arrow Keys</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- === POPUP DES SORTS (NOUVELLE UI) === -->
+    <div id="spellPopup" class="spell-popup hidden" role="dialog" aria-modal="true">
+        <div class="popup-header" id="spellPopupHeader">
+            <h3 id="popupTitle">Sorts</h3>
+            <div class="popup-actions">
+                <input id="spellSearch" type="search" placeholder="Filtrer un sort…" aria-label="Filtrer un sort">
+                <button class="close-btn" onclick="closePopup()" aria-label="Fermer">×</button>
+            </div>
+        </div>
+
+        <div class="popup-body">
+            <div id="spellSummary" class="spell-summary"></div>
+
+            <div class="table-wrap">
+                <table class="spell-table" id="spellTable">
+                    <thead>
+                        <tr>
+                            <th data-sort="name">Sort</th>
+                            <th class="col-damage" data-sort="damage">Dégâts</th>
+                            <th class="col-share" data-sort="share">%</th>
+                            <th class="col-hits" data-sort="hits">Coups</th>
+                            <th class="col-crit" data-sort="critRate">Crit%</th>
+                            <th class="col-avg" data-sort="avg">Moy.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spellTbody"><!-- lignes injectées --></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="popup-footer">
+            <span id="spellFooter">—</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

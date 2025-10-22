@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Server Connection Failed</title>
+    </head>
+    <body>
+        <h1>Connection Failed</h1>
+
+        <p>
+            The application was unable to connect to the local server. This may be due to the server not running or an
+            issue with the application's configuration.
+        </p>
+
+        <script>
+            const serverUrl = 'http://localhost:8990';
+            const redirectDelay = 1000;
+
+            /**
+             * Pings the server and redirects if it's online.
+             */
+            async function checkAndRedirect() {
+                try {
+                    const response = await fetch(serverUrl, { mode: 'no-cors' });
+
+                    console.log('Server is online. Redirecting...');
+                    window.location.href = serverUrl;
+                } catch (error) {
+                    console.error('Server is offline. Retrying...', error);
+
+                    setTimeout(checkAndRedirect, redirectDelay);
+                }
+            }
+            document.addEventListener('DOMContentLoaded', () => {
+                checkAndRedirect();
+            });
+        </script>
+    </body>
+</html>
