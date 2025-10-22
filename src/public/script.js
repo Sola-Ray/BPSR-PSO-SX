@@ -23,7 +23,7 @@
             "1740": ["1741"],
             "1901": ["1903", "1904", "1902"],
             "1922": ["1932"],
-            "2201172": ["1909"]
+            "2201172": ["1909"],
         },
         CLASS_COLORS: {
             wind_knight: "#4aff5a",
@@ -367,7 +367,7 @@
         buildSpellPayload(userId) {
             const user = State.users[userId];
             const entry = State.skillsByUser[userId];
-            console.log(entry);
+            //console.log(entry);
             if (!user || !entry?.skills) return null;
 
             const merged = mergeSkills(entry.skills);

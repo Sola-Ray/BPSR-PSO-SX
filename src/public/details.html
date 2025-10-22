@@ -130,11 +130,11 @@
             font-size: 12px;
         }
 
-            .spell-table thead[role="rowgroup"] th[scope="col"] {
+            .spell-table thead[role="rowgroup"] th[scope="col"]:not(:first-child) {
                 position: sticky;
                 top: 0;
                 background: rgba(0,0,0,0.35);
-                text-align: left;
+                text-align: right;
                 padding: 6px 8px;
                 font-weight: 700;
                 cursor: pointer;
