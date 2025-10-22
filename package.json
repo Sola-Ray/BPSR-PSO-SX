@@ -1,8 +1,8 @@
 {
-    "name": "bpsr_pso",
-    "productName": "BPSR PSO",
-    "version": "2.0.1",
-    "description": "Blue Protocol: Star Resonance - Per Second Overlay",
+    "name": "bpsr_pso_sx",
+    "productName": "BPSR PSO SX - Beta",
+    "version": "0.0.1",
+    "description": "Blue Protocol: Star Resonance - Per Second Overlay By Sola",
     "main": "src/index.js",
     "scripts": {
         "start": "electron-forge start",
@@ -16,12 +16,10 @@
     "config": {
         "forge": {
             "packagerConfig": {
-                "name": "BPSR PSO",
+                "name": "BPSR PSO SX",
                 "icon": "./resources/app.ico",
-                "extraResources": [
-                    "./resources/npcap-1.83.exe",
-                    "./README.md"
-                ]
+                "asar": true,
+                "ignore": [ "^/\\.vs($|/)" ]
             },
             "makers": [
                 {
@@ -36,12 +34,7 @@
                     "name": "@electron-forge/maker-squirrel",
                     "config": {
                         "setupIcon": "./resources/app.ico",
-                        "loadingGif": "./resources/installer.gif",
-                        "createDesktopShortcut": true,
-                        "extraFiles": [
-                            "./resources/npcap-1.83.exe",
-                            "./README.md"
-                        ]
+                        "createDesktopShortcut": true
                     }
                 }
             ]
@@ -49,8 +42,8 @@
     },
     "keywords": [],
     "author": {
-        "name": "Kami from BPSR",
-        "email": "Csim6890@gmail.com"
+        "name": "Sola",
+        "email": "solaraycontact@gmail.com"
     },
     "license": "MIT",
     "dependencies": {
