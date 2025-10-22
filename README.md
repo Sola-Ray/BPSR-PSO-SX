@@ -77,7 +77,7 @@ Below are some example views of the overlay in action:
 <p align="center">
   <img width="392" height="224" alt="Detailed metrics panel" src="https://github.com/user-attachments/assets/8a5a7e88-1237-4c16-a0f0-f5c0afb3eb91" />
   <br/>
-  <em>Detailed combat metrics and event logging.</em>
+  <em>Real-time HPS display showing nearby players’ output.</em>
 </p>
 
 <p align="center">
