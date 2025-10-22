@@ -1,9 +1,9 @@
 # ========================================
-#   BPSR-PSO-SX / Sola Extended
-#   Combined .gitignore for Node + VS + VSCode
+# BPSR-PSO-SX / Sola Extended
+# Node + Electron + VS + VSCode (Windows)
 # ========================================
 
-### Logs ###
+### Logs / diagnostics ###
 logs
 *.log
 npm-debug.log*
@@ -11,43 +11,40 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+report.*.json
 
-### Diagnostic reports ###
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
-### Runtime data ###
+### Runtime / temp ###
 pids
 *.pid
 *.seed
 *.pid.lock
-.DS_Store
-
-### Instrumented libs ###
-lib-cov
-
-### Coverage ###
-coverage
-*.lcov
-.nyc_output
-
-### Build / Cache ###
-build/Release
 .cache
-.parcel-cache
+.nyc_output
+.history/
+.tmp/
+temp/
+tmp/
+
+### Build / outputs ###
+dist/
+out/
+build/
+build/Release
 .webpack/
 .vite/
-.nuxt
-.next
+.nuxt/
+.next/
 .vuepress/dist
-.temp
-.docusaurus
+.docusaurus/
 .serverless/
 .fusebox/
 .dynamodb/
-out/
-dist
 
-### Dependency directories ###
+### Coverage ###
+coverage/
+*.lcov
+
+### Dependencies ###
 node_modules/
 jspm_packages/
 bower_components/
@@ -57,7 +54,7 @@ web_modules/
 *.tsbuildinfo
 typings/
 
-### Package / npm ###
+### Package managers ###
 .npm
 *.tgz
 .yarn-integrity
@@ -67,11 +64,11 @@ typings/
 .yarn/install-state.gz
 .pnp.*
 
-### Lint / Style ###
+### Lint / style ###
 .eslintcache
 .stylelintcache
 
-### Misc Dev Files ###
+### Misc dev caches ###
 .node_repl_history
 .rpt2_cache/
 .rts2_cache_cjs/
@@ -81,32 +78,25 @@ typings/
 
 ### Env files ###
 .env
-.env.local
-.env.test
-.env.test.local
-.env.development.local
-.env.production.local
+.env.*.local
 
-### Output & Temp ###
+### App data (si générés) ###
 users.json
 windowConfig.json
-.nyc_output
-.history/
-.ionide/
 
-### Editor settings ###
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
-.vscode-test
-.history
-.ionide
-*.vsix
+### Editors ###
+# VS Code — CHOISIR A ou B :
+# A) tout exclure :
+.vscode/
+# B) garder config partagée seulement :
+# .vscode/*
+# !.vscode/extensions.json
+# !.vscode/launch.json
+# !.vscode/settings.json
+# !.vscode/tasks.json
 
-### Visual Studio ###
+# Visual Studio
+.vs/
 *.rsuser
 *.suo
 *.user
@@ -120,7 +110,6 @@ mono_crash.*
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-.vs/
 Generated\ Files/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
@@ -166,18 +155,11 @@ FodyWeavers.xsd
 *.code-workspace
 *.sln.iml
 
-### Visual Studio Code ###
-.history/
-.ionide/
-.vscode-test
-*.vsix
-*.code-workspace
+### JetBrains ###
+.idea/
 
 ### System ###
+.DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# ========================================
-# End of .gitignore
-# ========================================

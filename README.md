@@ -34,8 +34,9 @@ Thanks to both authors for laying the groundwork for this extended variant.
 
 ### Prerequisites  
 You will need the following installed on your machine:  
-- Node.js (and npm)  
-- [Npcap](https://npcap.com/#download) (for packet capture)
+- **[Node.js](https://nodejs.org/en/download/current)** (includes npm)  
+- **[Npcap](https://npcap.com/#download)** – required for packet capture  
+  > Direct download: [https://npcap.com/dist/npcap-1.84.exe](https://npcap.com/dist/npcap-1.84.exe)
 
 ### Installation  
 1. Clone the repository:  
@@ -46,13 +47,7 @@ You will need the following installed on your machine:
    ```bash
    cd BPSR-PSO-SX
    ```
-3. Install Npcap:  
-   ```bash
-   cd resources
-   # Run the installer and make sure to enable “Install Npcap in WinPcap API-compatible Mode”
-   cd ..
-   ```
-4. Install Node.js dependencies:  
+3. Install Node.js dependencies:  
    ```bash
    npm install
    ```
