@@ -28,8 +28,7 @@ Thanks to both authors for laying the groundwork for this extended variant.
 - Real-time DPS (damage per second) and HPS (healing per second) metrics.  
 - Overlay view that updates dynamically for nearby players.  
 - Extended tracking, logging, and customization options (*Sola Extended* features).  
-- Packet interception and analysis (no modification of the game or BPSR files).  
-- … *(Add additional bullet points here describing the unique features your version provides.)*
+- Packet interception and analysis (no modification of the game or BPSR files).
 
 ## Getting Started  
 
