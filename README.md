@@ -62,8 +62,29 @@ The overlay should launch and begin monitoring packets from the game client.
 ## Usage  
 - Start the game and launch the overlay.  
 - Ensure Npcap is installed and has permissions to capture.  
-- Use the overlay to monitor DPS/HPS and other tracked metrics in real time.  
-- *(You may include screenshots, configuration instructions, hotkeys, customizations, etc.)*
+- Use the overlay to monitor DPS/HPS and other tracked metrics in real time.
+
+### Interface Overview  
+
+Below are some example views of the overlay in action:  
+
+<p align="center">
+  <img width="399" height="221" alt="DPS overlay example" src="https://github.com/user-attachments/assets/44cd0ce2-ac2c-4b99-b371-8965ea2086f2" />
+  <br/>
+  <em>Real-time DPS display showing nearby players’ output.</em>
+</p>
+
+<p align="center">
+  <img width="392" height="224" alt="Detailed metrics panel" src="https://github.com/user-attachments/assets/8a5a7e88-1237-4c16-a0f0-f5c0afb3eb91" />
+  <br/>
+  <em>Real-time HPS display showing nearby players’ output.</em>
+</p>
+
+<p align="center">
+  <img width="718" height="903" alt="Extended Sola view" src="https://github.com/user-attachments/assets/c49598b7-cc21-45e6-867a-0639d847680b" />
+  <br/>
+  <em>“Sola Extended” view with enhanced tracking and session analytics.</em>
+</p>
 
 ## Contributing  
 We welcome contributions! If you’d like to help improve or extend the project:  
