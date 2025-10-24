@@ -19,11 +19,11 @@
         COLOR_HUES: [210, 30, 270, 150, 330, 60, 180, 0, 240],
         NUMERIC_KEYS_WHITELIST: null, // ex: ["totalDamage","totalHits","critHits"]
         SKILL_MERGE_MAP: {
-            "1701": ["1702", "1703", "1704", "1739"],
+            /*"1701": ["1702", "1703", "1704", "1739"],
             "1740": ["1741"],
             "1901": ["1903", "1904", "1902"],
             "1922": ["1932"],
-            "2201172": ["1909"],
+            "2201172": ["1909"],*/
         },
         CLASS_COLORS: {
             wind_knight: "#4aff5a",
@@ -417,30 +417,56 @@
         openWindowForUser(userId) {
             State.currentSpellUserId = userId;
 
+            const DETAILS_URL = "./details/index.html";
+
+            // (ré)ouvre ou réutilise la fenêtre
             if (!State.spellWindowRef || State.spellWindowRef.closed) {
                 State.spellWindowRef = window.open(
-                    "details.html",
+                    DETAILS_URL,
                     "SpellDetails",
-                    "width=520,height=720,menubar=0,toolbar=0,location=0,status=0,resizable=1"
+                    "popup,width=780,height=720,menubar=0,toolbar=0,location=0,status=0,resizable=1"
                 );
+
+                // watchdog pour nettoyer l’état si l’utilisateur ferme la fenêtre
+                if (State.spellWindowWatchdog) clearInterval(State.spellWindowWatchdog);
                 State.spellWindowWatchdog = window.setInterval(() => {
                     if (!State.spellWindowRef || State.spellWindowRef.closed) Spells.closeWindowIfAny();
                 }, 1000);
             } else {
-                Spells.bringWindowToFront();
+                try { State.spellWindowRef.focus(); } catch { }
+                if (Spells.bringWindowToFront) Spells.bringWindowToFront();
             }
 
             const payload = Spells.buildSpellPayload(userId);
             if (!payload) return;
 
+            // --- Handshake: on attend "details-ready", puis on envoie le payload ---
+            let sent = false;
+
             const send = () => {
+                if (sent || !State.spellWindowRef || State.spellWindowRef.closed) return;
                 try {
-                    State.spellWindowRef.postMessage({ type: "spell-data", payload }, "*");
+                    // si même origine, on peut mettre location.origin; sinon "*"
+                    State.spellWindowRef.postMessage({ type: "spell-data", payload }, location.origin);
+                    sent = true;
                 } catch {
-                    setTimeout(send, 50);
+                    // la fenêtre n'est peut-être pas prête : retente un peu plus tard
+                    setTimeout(send, 120);
                 }
             };
-            setTimeout(send, 120);
+
+            // écoute une seule fois le signal "ready" provenant de la fenêtre details
+            const onReady = (ev) => {
+                if (ev.source !== State.spellWindowRef) return;
+                if (ev?.data?.type === "details-ready") {
+                    window.removeEventListener("message", onReady);
+                    send();
+                }
+            };
+            window.addEventListener("message", onReady);
+
+            // filet de sécurité si le "ready" se perd
+            setTimeout(send, 200);
         },
 
         pushLiveUpdateIfActive(userId) {

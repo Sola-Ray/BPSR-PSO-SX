@@ -1,0 +1,94 @@
+﻿<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8" />
+    <title>Details</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                 img-src 'self' data:;
+                 style-src 'self';
+                 script-src 'self';
+                 connect-src 'self' ws: wss:;
+                 frame-ancestors 'self';">
+    <link rel="stylesheet" href="./details.css" />
+</head>
+<body>
+    <main class="spell-window" id="windowRoot">
+        <header class="popup-header">
+            <h1 id="popupTitle">Spells</h1>
+
+            <div class="popup-actions">
+                <div class="seg" role="group" aria-label="Filter">
+                    <button class="seg-btn active" data-mode="all" type="button" title="Show all">All</button>
+                    <button class="seg-btn" data-mode="dmg" type="button" title="Show damage only">Damage</button>
+                    <button class="seg-btn" data-mode="heal" type="button" title="Show healing only">Heal</button>
+                </div>
+
+                <label class="visually-hidden" for="spellSearch">Filter a spell</label>
+                <input id="spellSearch" type="search"
+                       placeholder="Filter a spell (press / to focus)"
+                       inputmode="search" autocomplete="off" />
+
+                <button class="close-btn" data-action="close" type="button" aria-label="Close window">Close</button>
+            </div>
+        </header>
+
+        <section class="popup-body">
+            <div id="spellSummary" class="spell-summary" aria-live="polite"></div>
+
+            <section class="scope-card" aria-label="Realtime DPS/HPS">
+                <canvas id="scopeCanvas"></canvas>
+
+                <!-- Légende simplifiée : sans "const" -->
+                <div class="scope-legend">
+                    <div class="lg-row">
+                        <span class="lg lg-dps">DPS</span>
+                        <span id="lgDpsNow">—</span>
+                        <span class="muted">avg</span><span id="lgDpsAvg">—</span>
+                    </div>
+                    <div class="lg-row">
+                        <span class="lg lg-hps">HPS</span>
+                        <span id="lgHpsNow">—</span>
+                        <span class="muted">avg</span><span id="lgHpsAvg">—</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="table-wrap" role="region" aria-label="Spells table container">
+                <table class="spell-table" id="spellTable">
+                    <thead id="tableHead">
+                        <tr>
+                            <th scope="col" data-sort="name">Spell</th>
+                            <th scope="col" class="col-num" data-sort="damage">Damage</th>
+                            <th scope="col" class="col-num" data-sort="heal">Heal</th>
+                            <th scope="col" class="col-casts" data-sort="casts">Casts</th>
+                            <th scope="col" class="col-share" data-sort="shareDmg">% Dmg</th>
+                            <th scope="col" class="col-share" data-sort="shareHeal">% Heal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spellTbody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total</td>
+                            <td id="sumDmg" class="col-num" title="0">0</td>
+                            <td id="sumHeal" class="col-num" title="0">0</td>
+                            <td id="sumCasts" class="col-casts" title="0">0</td>
+                            <td class="col-share">100%</td>
+                            <td class="col-share">100%</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <footer class="popup-footer">
+            <span id="spellFooter" aria-live="polite">—</span>
+        </footer>
+    </main>
+
+    <noscript>JavaScript must be enabled to view spell details.</noscript>
+    <script src="./details.js" defer></script>
+</body>
+</html>
