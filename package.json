@@ -1,7 +1,7 @@
 {
     "name": "bpsr_pso_sx",
     "productName": "BPSR PSO SX - Beta",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Blue Protocol: Star Resonance - Per Second Overlay By Sola",
     "main": "src/index.js",
     "scripts": {
