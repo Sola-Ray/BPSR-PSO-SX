@@ -155,6 +155,7 @@ export class UserData {
     }
 
     /** 获取技能统计数据 */
+    /** 获取技能统计数据 */
     getSkillSummary() {
         const skills = {};
         for (const [skillId, stat] of this.skillUsage) {
@@ -164,22 +165,29 @@ export class UserData {
             const critRate = stat.count.total > 0 ? critCount / stat.count.total : 0;
             const luckyRate = stat.count.total > 0 ? luckyCount / stat.count.total : 0;
 
-            // 去掉治疗偏移，查名字
+            // retire l’offset des sorts de soin pour retrouver le vrai id
             const baseSkillId = skillId % HEAL_OFFSET;
             const name = skillConfig[baseSkillId] ?? baseSkillId;
-            const elementype = stat.element;
+
+            const isHealing = stat.type === STAT_TYPES.HEALING;
+
+            const totalDamage = isHealing ? 0 : stat.stats.total;
+            const totalHealing = isHealing ? stat.stats.total : 0;
 
             skills[skillId] = {
                 displayName: name,
-                type: stat.type,                // now 'damage' | 'healing' via STAT_TYPES
-                elementype: elementype,
-                totalDamage: stat.stats.total,
+                type: stat.type,                 // 'damage' | 'healing'
+                elementType: stat.element,       // (ex- elementype)
+                totalDamage,
+                totalHealing,
                 totalCount: stat.count.total,
                 critCount: stat.count.critical,
                 luckyCount: stat.count.lucky,
-                critRate: critRate,
-                luckyRate: luckyRate,
+                critRate,
+                luckyRate,
+                // on garde les breakdowns ; pour la lisibilité on duplique vers healingBreakdown aussi
                 damageBreakdown: { ...stat.stats },
+                healingBreakdown: { ...stat.stats },
                 countBreakdown: { ...stat.count },
             };
         }

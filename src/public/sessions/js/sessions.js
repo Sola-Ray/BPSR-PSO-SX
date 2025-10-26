@@ -284,6 +284,61 @@
         }
     }
 
+    function getTop3SpellsFromPlayer(p) {
+        const toNum = (v) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : 0;
+        };
+        const entry = (id, name, val, kind) => ({
+            id,
+            name: name || id,
+            val: toNum(val),
+            kind,
+        });
+
+        // 1) Source "officielle" : topAllSpells (faire confiance à kind)
+        if (Array.isArray(p?.topAllSpells) && p.topAllSpells.length) {
+            return p.topAllSpells
+                .slice(0, 3)
+                .map((s) => {
+                    const val =
+                        s.value != null
+                            ? toNum(s.value)
+                            : Math.max(toNum(s.damage), toNum(s.heal));
+                    const k = String(s.kind || "").toLowerCase();
+                    const kind = k.startsWith("heal") ? "HPS" : "DPS";
+                    return entry(s.id, s.name, val, kind);
+                })
+                .filter((e) => e.val > 0);
+        }
+
+        // 2) Fallback : mix DMG/HEAL explicite
+        const mix = [
+            ...(p?.topDamageSpells || []).map((s) => entry(s.id, s.name, s.damage, "DPS")),
+            ...(p?.topHealSpells || []).map((s) => entry(s.id, s.name, s.heal, "HPS")),
+        ]
+            .filter((e) => e.val > 0)
+            .sort((a, b) => b.val - a.val)
+            .slice(0, 3);
+        if (mix.length) return mix;
+
+        // 3) Dernier recours : ancien schéma "skills" (tie-break pro-HEAL)
+        const skills = p?.skills || p?.snapshot?.skills || p?.skillsByUser || null;
+        if (!skills || typeof skills !== "object") return [];
+
+        return Object.entries(skills)
+            .map(([id, s]) => {
+                const dmg = toNum(s?.totalDamage ?? s?.total_damage);
+                const heal = toNum(s?.totalHealing ?? s?.total_healing);
+                const val = Math.max(dmg, heal);
+                const kind = heal >= dmg ? "HPS" : "DPS";
+                return entry(id, s?.displayName || s?.name || id, val, kind);
+            })
+            .filter((e) => e.val > 0)
+            .sort((a, b) => b.val - a.val)
+            .slice(0, 3);
+    }
+
     async function renderDetail(id) {
         if (!id) return;
 
@@ -342,10 +397,7 @@
             const icon = classIconFor(p);
             const classKey = getClassKey(clsText);
 
-            const topArray = [
-                ...(p.topDamageSpells || []).map(s => ({ name: s.name, val: s.damage, kind: "DPS" })),
-                ...(p.topHealSpells || []).map(s => ({ name: s.name, val: s.heal ?? 0, kind: "HPS" })),
-            ].sort((a, b) => (toNum(b.val) - toNum(a.val))).slice(0, 3);
+            const topArray = getTop3SpellsFromPlayer(p);
 
             const topHtml = topArray.length
                 ? topArray.map(s => `

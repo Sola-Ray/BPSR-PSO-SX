@@ -412,66 +412,82 @@ class UserDataManager {
     /* ───────────────────────── sessions glue ───────────────────────── */
 
     /** Construit l’objet joueur attendu par sessions.js */
-    _buildPlayerSnapshot(uid) {
-        const u = this.users.get(uid);
+    _buildPlayerSnapshot(uidOrUser) {
+        // accepte soit un uid, soit un objet UserData
+        const u = (uidOrUser && typeof uidOrUser === 'object')
+            ? uidOrUser
+            : this._getAnyUser(uidOrUser);
+
         if (!u) return null;
 
         const sum = u.getSummary();
         const totalDamage = Number(sum.total_damage?.total || 0);
         const totalHeal = Number(sum.total_healing?.total || 0);
 
-        // ⛔️ Skip joueurs sans dégâts et sans soins
+        // skip si aucun dégât/soin
         if (totalDamage <= 0 && totalHeal <= 0) return null;
 
         const skills = u.getSkillSummary() || {};
 
-        // Top sorts (damage)
-        const damageSkills = Object.values(skills)
-            .filter(s => (s.type || '').toLowerCase() === 'damage');
-        const topDamageSpells = damageSkills
-            .map(s => ({
+        const spells = Object.values(skills).map(s => {
+            const dmg = Number(s.totalDamage ?? s.total_damage ?? 0);
+            const heal = Number(s.totalHealing ?? s.total_healing ?? 0);
+            const kind =
+                (heal > dmg) ? 'healing' :
+                    (dmg > heal) ? 'damage' :
+                        (heal > 0) ? 'healing' : 'damage';
+            const value = Math.max(dmg, heal);
+            return {
                 id: s.id || s.skillId || s.displayName,
                 name: s.displayName || String(s.id || s.skillId || 'Skill'),
-                damage: Number(s.totalDamage || s.total || 0),
-            }))
-            .sort((a, b) => b.damage - a.damage)
-            .slice(0, 3);
+                damage: dmg,
+                heal,
+                value,
+                kind,
+            };
+        }).filter(s => s.value > 0);
 
-        // Top sorts (healing)
-        const healSkills = Object.values(skills)
-            .filter(s => (s.type || '').toLowerCase() === 'healing');
-        const topHealSpells = healSkills
+        const topDamageSpells = spells
+            .filter(s => s.damage > 0)
+            .sort((a, b) => b.damage - a.damage)
+            .slice(0, 3)
+            .map(s => ({ id: s.id, name: s.name, damage: s.damage }));
+
+        const topHealSpells = spells
+            .filter(s => s.heal > 0)
+            .sort((a, b) => b.heal - a.heal)
+            .slice(0, 3)
+            .map(s => ({ id: s.id, name: s.name, heal: s.heal }));
+
+        const topAllSpells = spells
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 3)
             .map(s => ({
-                id: s.id || s.skillId || s.displayName,
-                name: s.displayName || String(s.id || s.skillId || 'Skill'),
-                heal: Number(s.totalHealing || s.total || 0),
-            }))
-            .sort((a, b) => (b.heal - a.heal))
-            .slice(0, 3);
+                id: s.id,
+                name: s.name,
+                value: s.value,
+                kind: s.kind,
+                damage: s.damage,
+                heal: s.heal,
+            }));
 
         return {
             uid: u.uid,
             name: u.name || String(u.uid),
-            // le viewer regarde "profession" et devine la classe/icône
             profession: u.profession + (u.subProfession ? ` ${u.subProfession}` : ''),
             fightPoint: u.fightPoint,
-
-            // champs que sessions.js lit directement
             dps: Number(sum.total_dps || 0),
             hps: Number(sum.total_hps || 0),
             totals: {
-                damage: Number(sum.total_damage?.total || 0),
-                heal: Number(sum.total_healing?.total || 0),
+                damage: totalDamage,
+                heal: totalHeal,
             },
-
             topDamageSpells,
             topHealSpells,
-
-            // utile si tu veux afficher plus tard
+            topAllSpells,
             attr: u.attr || {},
         };
     }
-
 
     onInstanceChanged(seq, reason, extra = {}) {
         logger.info(`[INSTANCE] Change detected: reason=${reason}, seq=${seq}, to=${extra?.to}`);
