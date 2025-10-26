@@ -416,6 +416,26 @@ export class PacketProcessor {
             uuid = Long.isLong(uuid) ? uuid.toUnsigned() : Long.fromValue(uuid).toUnsigned();
         } catch { return; }
 
+        // --- DEBUG ciblé UUID → déclenché juste avant setPlayerUuid ---
+        if (process?.env?.DEBUG_PLAYER_UUID === '1') {
+            try {
+                const snap = dumpSnapshot('./_uuid_dumps', 'before_setPlayerUuid', toMe, logger);
+                const interesting = snap?.interesting ?? findInterestingFields(toMe);
+                globalThis.__LAST_UUID_INTERESTING__ = globalThis.__LAST_UUID_INTERESTING__ ?? [];
+                const { added, removed, changed } =
+                    diffInteresting(globalThis.__LAST_UUID_INTERESTING__, interesting);
+                logger.info('[DEBUG_UUID] SyncToMeDeltaInfo', {
+                    rawKeys: Object.keys(toMe || {}),
+                    added: added.slice(0, 30),
+                    removed: removed.slice(0, 30),
+                    changed: changed.slice(0, 30),
+                });
+                globalThis.__LAST_UUID_INTERESTING__ = interesting;
+            } catch (e) {
+                logger.warn('[DEBUG_UUID] inspector failed', { err: e?.message });
+            }
+        }
+
         // on maintient les deux pour compat:
         instanceTracker.setPlayerUuid(uuid, { debounceMs: 0 });
         this.#currentUserUuid = uuid;

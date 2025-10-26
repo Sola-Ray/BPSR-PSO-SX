@@ -63,8 +63,6 @@ export class InstanceTracker {
         // état public/minimal
         this.currentMapId = null;
         this.currentMapName = null;
-        this.currentInstanceKey = null;
-        this.currentDungeonId = null;
 
         // scène courante (chez nous = id de scène autoritaire)
         this.currentSceneId = null;
@@ -73,13 +71,14 @@ export class InstanceTracker {
         this.currentPlayerUid = null;
         this._lastUidChangeAt = 0;
 
+        this._firstInstanceLocked = false;
+
         // état interne
         this._instanceSeq = 0;
         this._lastChangeTs = Date.now();
         this._lastAoiPopulation = 0;
         this._lastAoiWipeTs = 0;
         this._lastSelfAppearedTs = 0;
-        this._dirtyProbeMemory = null;
 
         // staging de scène: { srcSceneId, dstSceneId, nextSceneId }
         this._pendingScene = null;
@@ -102,8 +101,8 @@ export class InstanceTracker {
             recordId: null,
             mapId: null,
             levelMapId: null,
-            lastSceneId: null, // sémantique “source” utile au debug
-            sceneId: null,     // snapshot brut
+            lastSceneId: null,
+            sceneId: null,
         };
     }
 
@@ -124,9 +123,6 @@ export class InstanceTracker {
         );
     }
 
-    /** Dérivation d’un identifiant de scène fiable depuis un VData
-     *  👉 Priorité donjons: SceneData.LevelMapId, puis SceneData.MapId, puis vieux champs.
-     */
     static _deriveSceneIdFromVData(vData) {
         const id = Number.isFinite(Number(vData?.SceneData?.LevelMapId))
             ? Number(vData.SceneData.LevelMapId)
@@ -155,7 +151,20 @@ export class InstanceTracker {
         this.currentPlayerUid = newUid;
         this._lastUidChangeAt = now;
 
-        this.logger?.info?.(`Got player UUID! UUID: ${uuid} UID: ${newUid}`);
+        if (process?.env?.DEBUG_PLAYER_UUID === '1') {
+            try {
+                this.logger?.debug?.('[DEBUG_UUID] player-uuid-changed (pre-bump)', {seq: this._instanceSeq + 1,
+                    prevUuid: prevUuid ? prevUuid.toString() : null,
+                    newUuid: uuid.toString(),
+                    newUid,
+                    debounceMs,
+                    sinceLastChangeMs: Date.now() - this._lastChangeTs,
+                    mapId: this.currentMapId,
+                    sceneId: this.currentSceneId,
+                    sceneKey: this.getSceneKey(),
+                });
+            } catch { }
+        }
         this.bump('player-uuid-changed', {
             prevUuid: prevUuid ? prevUuid.toString() : null,
             newUuid: uuid.toString(),
@@ -180,15 +189,11 @@ export class InstanceTracker {
 
         return this.mapNamesTable[String(mapId)] ?? `Map ${mapId}`;
     }
-/** Log non “instance” (n’augmente pas la séquence, pas d’onInstanceChanged) */
-_info(msg, extra = {}) {
-    this.logger?.info?.(msg, extra);
-    // On garde addLog pour visibilité UI, mais sans signal de “changement d’instance”
-    this.udm?.addLog?.(msg);
-    // Pas de housekeeping ici (réservé à bump)
-}
 
-
+    _info(msg, extra = {}) {
+        this.logger?.info?.(msg, extra);
+        this.udm?.addLog?.(msg);
+    }
 
     bump(reason, extra = {}) {
         const now = Date.now();
@@ -200,20 +205,27 @@ _info(msg, extra = {}) {
         const msg = `[INSTANCE] #${this._instanceSeq} - (id=${extra?.to ?? this.currentMapId ?? '??'}) - ${reason}`;
         this.logger?.info?.(msg, extra);
         this.udm?.addLog?.(msg);
-        this.udm?.onInstanceChanged?.(this._instanceSeq, reason, { ...extra });
 
-        // housekeeping léger (best effort)
+        const shouldTrigger = this._shouldTriggerInstance(reason);
+
+        if (!shouldTrigger) {
+            return;
+        }
+
         try {
             this.udm?.enemyCache?.name?.clear?.();
             this.udm?.enemyCache?.hp?.clear?.();
             this.udm?.enemyCache?.maxHp?.clear?.();
             this.udm?.clearLiveLogs?.();
         } catch { }
+
+        this.udm?.onInstanceChanged?.(this._instanceSeq, reason, { ...extra });
     }
 
     /* ───────── scène: staging/commit ───────── */
 
-    _commitPendingScene(reason = 'commit') { const staged = this._pendingScene;
+    _commitPendingScene(reason = 'commit') {
+        const staged = this._pendingScene;
         if (!staged) return;
 
         const { srcSceneId, nextSceneId } = staged;
@@ -226,29 +238,21 @@ _info(msg, extra = {}) {
         this.currentSceneId = nextSceneId;
         this._pendingScene = null;
 
-        
-this.bump('scene-id-changed', {
+        this.bump('scene-id-changed', {
             from: prevSceneId ?? srcSceneId ?? null,
             to: this.currentSceneId,
             via: reason,
         });
-}
+    }
 
-    /**
-     * Détection fine depuis SceneData (STAGING, pas de commit direct)
-     * 👉 Donjons: **LevelMapId** prioritaire, puis **MapId**.
-     */
     updateFromSceneData(sceneData) {
         if (!sceneData || typeof sceneData !== 'object') return;
 
-        // “source” (debug seulement)
         const srcSceneId = isFiniteNum(sceneData?.LastSceneData?.SceneId)
             ? Number(sceneData.LastSceneData.SceneId)
             : null;
 
-        // ✅ priorités
         const levelMapId = isFiniteNum(sceneData.LevelMapId) ? Number(sceneData.LevelMapId) : null;
-        // ce qu’on stage comme “prochaine scène”
         const nextSceneId = levelMapId ?? null;
 
         const next = {
@@ -258,20 +262,19 @@ this.bump('scene-id-changed', {
             recordId: u64ToString(sceneData.RecordId),
             mapId: null,
             levelMapId,
-            lastSceneId: srcSceneId, // debug
-            sceneId: nextSceneId, // brut
+            lastSceneId: srcSceneId,
+            sceneId: nextSceneId,
         };
 
         const prev = this._scene || {};
         const changed = Object.keys(next).filter((k) => next[k] !== prev[k]);
         if (changed.length === 0) return;
 
-        this._scene = next; // snapshot brut
+        this._scene = next;
         this._pendingScene = { srcSceneId, dstSceneId: nextSceneId, nextSceneId, levelMapId };
 
         this.logger?.debug?.('[INSTANCE] staged scene via SceneData', this._pendingScene);
 
-        // bump d’info (non destructif)
         const isInstanced =
             !!next.dungeonGuid || !!next.levelUuid || !!next.sceneGuid || !!next.recordId;
         const kind = isInstanced ? 'dungeonOrRaid' : 'openWorld';
@@ -282,7 +285,6 @@ this.bump('scene-id-changed', {
             (nextSceneId != null ? `scene:${nextSceneId}` : 'unknown');
 
         this._info(`[INSTANCE] staged scene (${kind})`, {
-
             reasonKeys: changed,
             key,
             kind,
@@ -294,19 +296,14 @@ this.bump('scene-id-changed', {
             levelMapId: next.levelMapId,
             srcSceneId,
             stagedSceneId: nextSceneId,
-        
-});}
+        });
+    }
 
-    /** Intégration VData “classique” + commit sur signaux forts */
-    
-    /** Intégration VData “classique” + commit sur signaux forts */
     updateFromVData(vData) {
         if (!vData) return;
 
-        // 1) SceneData (staging)
         if (vData.SceneData) this.updateFromSceneData(vData.SceneData);
 
-        // 2) Scène (autoritaire = LevelMapId uniquement)
         const derivedSceneId = InstanceTracker._deriveSceneIdFromVData(vData);
         if (derivedSceneId != null && derivedSceneId !== this.currentSceneId) {
             if (this._pendingScene) {
@@ -317,23 +314,7 @@ this.bump('scene-id-changed', {
                 this.bump('scene-id-changed', { from: prev, to: this.currentSceneId, via: 'derived' });
             }
         }
-
-        // 3) DungeonId (optionnel, pour le log/état)
-        if (isFiniteNum(vData?.DungeonId)) {
-            const did = Number(vData.DungeonId);
-            if (this.currentDungeonId !== did) {
-                const prev = this.currentDungeonId;
-                this.currentDungeonId = did;
-                this.bump('dungeon-id-changed', {
-                    from: prev,
-                    to: this.currentDungeonId,
-                    mapId: this.currentMapId,
-                    mapName: this.currentMapName,
-                });
-            }
-        }
     }
-
 
     /* ───────── AOI hooks ───────── */
 
@@ -345,8 +326,6 @@ this.bump('scene-id-changed', {
             mapName: this.currentMapName,
             to: this.currentMapId,
         });
-
-        // wipe = très bon signal d’atterrissage
         this._commitPendingScene('aoi-wipe');
     }
 
@@ -354,14 +333,12 @@ this.bump('scene-id-changed', {
         this._lastSelfAppearedTs = Date.now();
         this.bump('self-appeared-in-aoi', { uuid });
 
-        // atterrissage confirmé
         this._commitPendingScene('self-appeared-in-aoi');
 
         if (Date.now() - this._lastAoiWipeTs < 3000) {
             this.bump('entered-sub-instance', {
                 mapId: this.currentMapId,
                 mapName: this.currentMapName,
-                instanceKey: this.currentInstanceKey,
             });
         }
     }
@@ -374,24 +351,14 @@ this.bump('scene-id-changed', {
         if (delta !== 0) this._lastAoiPopulation = Math.max(0, this._lastAoiPopulation + delta);
     }
 
-    probeDirtyBlob({ idProbe }) {
-        if (!isFiniteNum(idProbe) || !isPlausibleInstanceId(idProbe)) return;
-        if (idProbe === this.currentInstanceKey) {
-            this._dirtyProbeMemory = null;
-            return;
+    _shouldTriggerInstance(reason) {
+        if (!this._firstInstanceLocked) {
+            if (reason === 'player-uuid-changed') {
+                this._firstInstanceLocked = true;
+                return true;
+            }
+            return false;
         }
-        if (this._dirtyProbeMemory !== idProbe) {
-            this._dirtyProbeMemory = idProbe;
-            return;
-        }
-        const prev = this.currentInstanceKey;
-        this.currentInstanceKey = Number(idProbe);
-        this.bump('instance-id-changed(dirty)', {
-            from: prev,
-            to: this.currentInstanceKey,
-            mapId: this.currentMapId,
-            mapName: this.currentMapName,
-        });
-        this._dirtyProbeMemory = null;
+        return reason === 'scene-id-changed';
     }
 }
