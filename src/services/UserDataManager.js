@@ -12,6 +12,7 @@ import mapNames from '../tables/map_names.json' with { type: 'json' };
 class UserDataManager {
     constructor(logger) {
         this.users = new Map();
+        this.userGraveyard = new Map();
         this.userCache = new Map();
         this.cacheFilePath = './users.json';
 
@@ -81,13 +82,16 @@ class UserDataManager {
     // Retire les joueurs inactifs > 60s
     cleanUpInactiveUsers() {
         const inactiveThreshold = 60 * 1000;
-        const currentTime = Date.now();
+        const now = Date.now();
 
         for (const [uid, user] of this.users.entries()) {
-            if (currentTime - user.lastUpdateTime > inactiveThreshold) {
-                socket.emit('user_deleted', { uid });
+            if (now - user.lastUpdateTime > inactiveThreshold) {
+                // on garde le UserData pour la persistance (stats/skills)
                 this.users.delete(uid);
-                logger.info(`Removed inactive user with uid ${uid}`);
+                this.userGraveyard.set(uid, user);
+
+                socket.emit('user_deleted', { uid });
+                logger.info(`Moved inactive user to graveyard: uid=${uid}`);
             }
         }
     }
@@ -142,20 +146,25 @@ class UserDataManager {
     /* ───────────────────────── user data API ───────────────────────── */
 
     getUser(uid) {
-        if (!this.users.has(uid)) {
-            const user = new UserData(uid);
-            const cachedData = this.userCache.get(String(uid));
-            if (cachedData) {
-                if (cachedData.name) user.setName(cachedData.name);
-                if (cachedData.profession) user.setProfession(cachedData.profession);
-                if (cachedData.subProfession) user.setSubProfession(cachedData.subProfession);
-                if (cachedData.fightPoint != null) user.setFightPoint(cachedData.fightPoint);
-                if (cachedData.maxHp != null) user.setAttrKV('max_hp', cachedData.maxHp);
-            }
-            if (this.hpCache.has(uid)) user.setAttrKV('hp', this.hpCache.get(uid));
-            this.users.set(uid, user);
+        if (this.users.has(uid)) return this.users.get(uid);
+        if (this.userGraveyard.has(uid)) {
+            const u = this.userGraveyard.get(uid);
+            this.userGraveyard.delete(uid);
+            this.users.set(uid, u);
+            return u;
         }
-        return this.users.get(uid);
+        const user = new UserData(uid);
+        const cachedData = this.userCache.get(String(uid));
+        if (cachedData) {
+            if (cachedData.name) user.setName(cachedData.name);
+            if (cachedData.profession) user.setProfession(cachedData.profession);
+            if (cachedData.subProfession) user.setSubProfession(cachedData.subProfession);
+            if (cachedData.fightPoint != null) user.setFightPoint(cachedData.fightPoint);
+            if (cachedData.maxHp != null) user.setAttrKV('max_hp', cachedData.maxHp);
+        }
+        if (this.hpCache.has(uid)) user.setAttrKV('hp', this.hpCache.get(uid));
+        this.users.set(uid, user);
+        return user;
     }
 
     addDamage(uid, skillId, element, damage, isCrit, isLucky, isCauseLucky, hpLessenValue = 0, targetUid) {
@@ -275,7 +284,7 @@ class UserDataManager {
 
     getAllUsersData() {
         const result = {};
-        for (const [uid, user] of this.users.entries()) {
+        for (const [uid, user] of this._getAllUserEntries()) {
             result[uid] = user.getSummary();
         }
         return result;
@@ -310,15 +319,31 @@ class UserDataManager {
         this.enemyCache.maxHp.clear();
     }
 
-    clearAll() {
-        const usersToSave = this.users;
+    clearAll(opts = {}) {
+        const { persistSession = false, reasonEnd = 'manual_clear' } = opts;
+
+        if (persistSession) {
+            try {
+                this._finalizeAndPersistSession(reasonEnd);
+            } catch (e) {
+                logger.error('[SESSION] finalize before clear failed:', e);
+            }
+        }
+
+        const usersToSave = new Map([...this.users, ...(this.userGraveyard ? this.userGraveyard : new Map())]);
         const saveStartTime = this.startTime;
+
         this.users = new Map();
+        if (this.userGraveyard) this.userGraveyard = new Map();
+
         this.startTime = Date.now();
         this.lastAutoSaveTime = 0;
         this.lastLogTime = 0;
+
         this.saveAllUserData(usersToSave, saveStartTime);
     }
+
+
 
     getUserIds() {
         return Array.from(this.users.keys());
@@ -455,8 +480,9 @@ class UserDataManager {
         if (this.currentSession) {
             const endedAt = Date.now();
             const snapshotUsers = this.getAllUsersData();
-            const players = this.getUserIds()
-                .map(uid => this._buildPlayerSnapshot(uid))
+
+            const players = this._getAllUserEntries()
+                .map(([uid, _u]) => this._buildPlayerSnapshot(uid))
                 .filter(Boolean);
 
             if (players.length === 0) {
@@ -532,8 +558,8 @@ class UserDataManager {
         const endedAt = Date.now();
         const snapshotUsers = this.getAllUsersData();
 
-        const players = this.getUserIds()
-            .map(uid => this._buildPlayerSnapshot(uid)) // <- déjà en place
+        const players = this._getAllUserEntries()
+            .map(([uid, _u]) => this._buildPlayerSnapshot(uid))
             .filter(Boolean);
 
         // ⛔️ Rien à sauvegarder si aucun joueur n’a fait de dmg/soin
@@ -612,6 +638,31 @@ class UserDataManager {
             reasonStart: this.currentSession.reasonStart,
         });
         socket.emit('dps_cleared', { at: Date.now() });
+    }
+
+    _allUserMaps() {
+        return [this.users, this.userGraveyard];
+    }
+
+    _getAnyUser(uid) {
+        return this.users.get(uid) || this.userGraveyard.get(uid) || null;
+    }
+
+    _getAllUserEntries() {
+        const seen = new Set();
+        const entries = [];
+        for (const m of this._allUserMaps()) {
+            for (const [uid, u] of m.entries()) {
+                if (seen.has(uid)) continue;
+                seen.add(uid);
+                entries.push([uid, u]);
+            }
+        }
+        return entries;
+    }
+
+    getUserIds() {
+        return this._getAllUserEntries().map(([uid]) => uid);
     }
 
 }

@@ -1,7 +1,7 @@
 {
     "name": "bpsr_pso_sx",
     "productName": "BPSR PSO SX - Beta",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "Blue Protocol: Star Resonance - Per Second Overlay By Sola",
     "main": "src/index.js",
     "scripts": {
@@ -15,12 +15,29 @@
     },
     "config": {
         "forge": {
+            "publishers": [
+                {
+                    "name": "@electron-forge/publisher-github",
+                    "config": {
+                        "repository": {
+                            "owner": "Sola-Ray",
+                            "name": "BPSR-PSO-SX"
+                        },
+                        "prerelease": true,
+                        "draft": false
+                    }
+                }
+            ],
             "packagerConfig": {
                 "name": "BPSR PSO SX",
                 "icon": "./resources/app.ico",
                 "asar": true,
                 "ignore": [
-                    "^/\\.vs($|/)"
+                    "^/\\.vs($|/)",
+                    "^/_vdata_dumps($|/)",
+                    "^/logs($|/)?",
+                    "^/tests?($|/)",
+                    "^/\\.git($|/)"
                 ]
             },
             "makers": [
@@ -52,6 +69,7 @@
         "cap": "^0.2.1",
         "cors": "^2.8.5",
         "electron-squirrel-startup": "^1.0.1",
+        "electron-updater": "^6.6.2",
         "express": "^5.1.0",
         "google-protobuf": "^3.21.4",
         "long": "^5.3.2",
@@ -68,6 +86,7 @@
         "@electron-forge/maker-zip": "^7.8.3",
         "@electron-forge/plugin-auto-unpack-natives": "^7.8.3",
         "@electron-forge/plugin-fuses": "^7.8.3",
+        "@electron-forge/publisher-github": "^7.8.3",
         "@electron/fuses": "^1.8.0",
         "electron": "37.3.1",
         "esbuild": "^0.25.11",

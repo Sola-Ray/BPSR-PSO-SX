@@ -1,7 +1,6 @@
-﻿// api/router.js
+﻿// routes/api.js
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
 import logger from '../services/Logger.js';
 import userDataManager from '../services/UserDataManager.js';
@@ -13,11 +12,6 @@ import mapNames from '../tables/map_names.json' with { type: 'json' };
 /*                                  Helpers                                   */
 /* -------------------------------------------------------------------------- */
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const LOGS_DIR = path.resolve(__dirname, '../..', 'logs'); // adapte si besoin
-
 const JSON_OK = (payload = {}) => ({ code: 0, ...payload });
 const JSON_ERR = (msg, extra = {}) => ({ code: 1, msg: String(msg), ...extra });
 
@@ -26,15 +20,6 @@ const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, ne
 
 /** Vérifie qu’une valeur n’est composée que de chiffres. */
 const isDigits = (s) => typeof s === 'string' && /^\d+$/.test(s);
-
-/** Empêche la traversée de répertoires dans /logs. */
-const safeJoinLogs = (...segments) => {
-    const abs = path.resolve(LOGS_DIR, ...segments);
-    if (!abs.startsWith(LOGS_DIR)) {
-        throw new Error('Unsafe path');
-    }
-    return abs;
-};
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -96,12 +81,24 @@ const saveCurrentSessionIfAny = async () => {
 
 /**
  * Crée un Router Express configuré.
- * @param {boolean} isPaused État initial pause.
- * @param {string} SETTINGS_PATH Chemin du fichier de settings.
+ * @param {boolean} isPausedInit État initial pause.
+ * @param {string} SETTINGS_PATH Chemin du fichier de settings (RW).
+ * @param {string} LOGS_DIR Dossier racine des logs/historiques (RW).
  * @returns {import('express').Router}
  */
-export function createApiRouter(isPaused, SETTINGS_PATH) {
+export function createApiRouter(isPausedInit, SETTINGS_PATH, LOGS_DIR) {
+    let isPaused = Boolean(isPausedInit);
     const router = express.Router();
+
+    /** Empêche la traversée de répertoires dans LOGS_DIR. */
+    const safeJoinLogs = (...segments) => {
+        const base = path.resolve(LOGS_DIR);
+        const abs = path.resolve(base, ...segments);
+        if (!abs.startsWith(base)) {
+            throw new Error('Unsafe path');
+        }
+        return abs;
+    };
 
     // Middleware JSON
     router.use(express.json());
@@ -261,7 +258,6 @@ export function createApiRouter(isPaused, SETTINGS_PATH) {
 
             const file = safeJoinLogs(timestamp, 'fight.log');
 
-            // Donne un 404 propre si le fichier n’existe pas
             try {
                 await fs.access(file);
             } catch {
@@ -333,7 +329,6 @@ export function createApiRouter(isPaused, SETTINGS_PATH) {
 
     // ----------------------------- SETTINGS -----------------------------------
 
-    // Conserve le "global", mais le rend explicite
     const readGlobalSettings = () => globalThis.globalSettings ?? {};
     const writeGlobalSettings = async (next) => {
         globalThis.globalSettings = next;
@@ -347,7 +342,7 @@ export function createApiRouter(isPaused, SETTINGS_PATH) {
     router.post(
         '/settings',
         asyncHandler(async (req, res) => {
-            const incoming = (req.body && typeof req.body === 'object') ? req.body : {};
+            const incoming = req.body && typeof req.body === 'object' ? req.body : {};
             const merged = { ...readGlobalSettings(), ...incoming };
             await writeGlobalSettings(merged);
             res.json(JSON_OK({ data: merged }));
@@ -355,7 +350,6 @@ export function createApiRouter(isPaused, SETTINGS_PATH) {
     );
 
     /* ------------------------ Middleware d’erreur JSON ----------------------- */
-    // (placé à la fin du router pour ne pas affecter l’app globale)
     // eslint-disable-next-line no-unused-vars
     router.use((err, _req, res, _next) => {
         logger.error('[API ERROR]', err);

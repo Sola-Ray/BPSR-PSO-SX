@@ -3,6 +3,7 @@ const squirrelStartup = require('electron-squirrel-startup');
 const { app, BrowserWindow, globalShortcut, ipcMain, nativeImage, clipboard } = require('electron');
 const path = require('node:path');
 const { checkForNpcap } = require('./client/npcapHandler.js');
+const { setupAutoUpdate } = require('./updater.js'); // auto-update
 
 if (squirrelStartup) app.quit();
 
@@ -10,13 +11,12 @@ let SERVER_URL = null;
 let MAIN_WINDOW_ID = null;
 
 /* --------------- IPC (enregistrés globalement) --------------- */
-// Pour éviter les erreurs de double-enregistrement en dev/reload
 function safeHandle(channel, handler) {
-    try { ipcMain.removeHandler(channel); } catch { }
+    try { ipcMain.removeHandler(channel); } catch { /* no-op */ }
     ipcMain.handle(channel, handler);
 }
 
-// Copie un dataURL d'image dans le presse-papiers (fallback natif pour le canvas React)
+// Copie un dataURL d'image
 safeHandle('copy-image-dataurl', async (_evt, dataURL) => {
     try {
         const img = nativeImage.createFromDataURL(String(dataURL || ''));
@@ -29,7 +29,7 @@ safeHandle('copy-image-dataurl', async (_evt, dataURL) => {
     }
 });
 
-// Capture une zone rectangulaire de la fenêtre appelante et renvoie un dataURL
+// Capture rect → dataURL
 safeHandle('capture-rect', async (evt, bounds) => {
     try {
         const win = BrowserWindow.fromWebContents(evt.sender);
@@ -47,7 +47,7 @@ safeHandle('capture-rect', async (evt, bounds) => {
     }
 });
 
-// Capture une zone et la copie directement dans le presse-papiers
+// Capture rect → presse-papiers
 safeHandle('sessions-capture-to-clipboard', async (evt, bounds) => {
     try {
         const win = BrowserWindow.fromWebContents(evt.sender);
@@ -75,7 +75,7 @@ safeHandle('focus-main-window', async () => {
 });
 safeHandle('focus-child-window', async () => {
     const wins = BrowserWindow.getAllWindows();
-    const child = wins.find(w => w.id !== MAIN_WINDOW_ID);
+    const child = wins.find((w) => w.id !== MAIN_WINDOW_ID);
     if (child) { child.show(); child.focus(); return true; }
     return false;
 });
@@ -85,47 +85,63 @@ async function initialize() {
     const canProceed = await checkForNpcap();
     if (!canProceed) return;
 
-    // Imports dynamiques en CJS
     const windowMod = require('./client/Window.js');
     const window = windowMod.default || windowMod;
 
     const shortcuts = require('./client/shortcuts.js');
     const registerShortcuts = shortcuts.registerShortcuts;
 
-    const serverMod = require('./server.js');
-    const server = serverMod.default || serverMod;
+    // server.js est ESM → import dynamique
+    const { default: server } = await import('./server.js');
 
-    // ⚠️ IpcListeners.js ne doit PLUS enregistrer 'capture-rect' ni 'sessions-capture-to-clipboard'
+    // Listeners IPC renderer
     require('./client/IpcListeners.js');
 
-    if (process.platform === 'win32') {
-        app.setAppUserModelId(app.name);
-    }
+    if (process.platform === 'win32') app.setAppUserModelId(app.name);
 
     const mainWin = window.create();
     MAIN_WINDOW_ID = (mainWin && mainWin.id) || null;
     if (registerShortcuts) registerShortcuts();
 
+    // -------- chemins runtime (DEV vs .EXE) --------
+    const isPackaged = app.isPackaged;
+    const userDataDir = app.getPath('userData'); // dossier RW
+
+    // ⚠️ index.js est dans /src → en prod, tout est dans .../resources/app.asar/src/...
+    const baseDir = isPackaged
+        ? path.join(process.resourcesPath, 'app.asar', 'src')
+        : __dirname;
+
+    const paths = {
+        publicDir: path.join(baseDir, 'public'),
+        settingsPath: path.join(userDataDir, 'settings.json'),
+        logsDir: path.join(userDataDir, 'logs'),
+    };
+
+    // Auto-update
+    const getMainWindow = () => (MAIN_WINDOW_ID ? BrowserWindow.fromId(MAIN_WINDOW_ID) : null);
+    setupAutoUpdate({ ipcMain, getMainWindow, safeHandle });
+
     try {
-        console.log('[Main Process] Attempting to start server automatically...');
-        const serverUrl = await server.start().catch(err => {
-            console.error('[Main Process] server.start failed:', err);
+        console.log('[Main] Starting server with paths:', paths);
+        const serverUrl = await server.start(paths).catch(err => {
+            console.error('[Main] server.start failed:', err);
         });
 
-        process.on('unhandledRejection', (e) => {
-            console.error('Unhandled rejection:', e);
-        });
+        process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e));
 
-        SERVER_URL = serverUrl || SERVER_URL;
-        console.log(`[Main Process] Server started. Loading URL: ${serverUrl}`);
-        window.loadURL(serverUrl);
+        const urlToLoad = serverUrl || 'http://localhost:8990'; // fallback sûr
+        SERVER_URL = urlToLoad;
+
+        console.log(`[Main] Server started. Loading URL: ${urlToLoad}`);
+        window.loadURL(urlToLoad);
     } catch (error) {
-        console.error('[Main Process] CRITICAL: Failed to start server:', error);
+        console.error('[Main] CRITICAL: Failed to start server:', error);
         app.quit();
     }
 }
 
-app.on('ready', () => { initialize().catch(err => console.error('[Main] init error:', err)); });
+app.on('ready', () => { initialize().catch((err) => console.error('[Main] init error:', err)); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) initialize().catch(console.error); });
 app.on('will-quit', () => { globalShortcut.unregisterAll(); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

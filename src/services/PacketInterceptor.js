@@ -21,7 +21,7 @@ const clearDataOnServerChange = () => {
     ) {
         return;
     }
-    userDataManager.clearAll();
+    userDataManager.clearAll({ persistSession: true, reasonEnd: 'server_changed' });
     logger.info('Server changed, statistics cleared!');
 };
 

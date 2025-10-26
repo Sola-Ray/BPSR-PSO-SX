@@ -588,7 +588,7 @@
                     Data.updateAll();
                     UI.resetSpellPopup();
                     Spells.closeWindowIfAny();
-                    console.log("Data cleared successfully.");
+                    //console.log("Data cleared successfully.");
                 } else {
                     console.error("Failed to clear data:", result.msg);
                 }
@@ -689,14 +689,14 @@
             });
 
             State.socket.on('session_started', (data) => {
-                console.log('Nouvelle session:', data);
+                //console.log('Nouvelle session:', data);
                 setServerStatus('cleared');
                 State.users = {};
                 Renderer.renderDataList([], State.activeTab);
             });
 
             State.socket.on('session_changed', (data) => {
-                console.log('Instance changée:', data);
+                //console.log('Instance changée:', data);
                 setServerStatus('cleared');
                 State.users = {};
                 Renderer.renderDataList([], State.activeTab);
