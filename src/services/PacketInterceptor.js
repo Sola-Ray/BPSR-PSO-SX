@@ -21,8 +21,8 @@ const clearDataOnServerChange = () => {
     ) {
         return;
     }
-    userDataManager.clearAll({ persistSession: true, reasonEnd: 'server_changed' });
-    logger.info('Server changed, statistics cleared!');
+    //userDataManager.clearAll({ persistSession: true, reasonEnd: 'server_changed' });
+    //logger.info('Server changed, statistics cleared!');
 };
 
 export class PacketInterceptor {
@@ -180,7 +180,7 @@ export class PacketInterceptor {
                                             current_server = src_server;
                                             clearTcpCache();
                                             tcp_next_seq = tcpPacket.info.seqno + buf.length;
-                                            clearDataOnServerChange();
+                                            //clearDataOnServerChange();
                                             logger.info('Got Scene Server Address: ' + src_server);
                                         }
                                     } while (data1 && data1.length);
@@ -199,7 +199,7 @@ export class PacketInterceptor {
                                         current_server = src_server;
                                         clearTcpCache();
                                         tcp_next_seq = tcpPacket.info.seqno + buf.length;
-                                        clearDataOnServerChange();
+                                        //clearDataOnServerChange();
                                         logger.info('Got Scene Server Address by Login Return Packet: ' + src_server);
                                     }
                                 }
