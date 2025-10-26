@@ -22,7 +22,11 @@ html, body {
     --text: #fff;
 }
 
-@media (prefers-color-scheme: light) {
+:root {
+    color-scheme: dark;
+}
+
+/*@media (prefers-color-scheme: light) {
     :root {
         --bg: #f6f7f9;
         --text: #111;
@@ -35,7 +39,7 @@ html, body {
         --scrollbar-thumb: #c7cbd4;
         --scrollbar-thumb-hover: #aeb4bf;
     }
-}
+}*/
 
 .visually-hidden {
     position: absolute;
