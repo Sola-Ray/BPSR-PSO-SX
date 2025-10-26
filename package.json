@@ -19,7 +19,9 @@
                 "name": "BPSR PSO SX",
                 "icon": "./resources/app.ico",
                 "asar": true,
-                "ignore": [ "^/\\.vs($|/)" ]
+                "ignore": [
+                    "^/\\.vs($|/)"
+                ]
             },
             "makers": [
                 {
@@ -55,6 +57,7 @@
         "long": "^5.3.2",
         "protobufjs": "^7.5.3",
         "socket.io": "^4.8.1",
+        "uuid": "^13.0.0",
         "winston": "^3.17.0"
     },
     "devDependencies": {
@@ -67,6 +70,7 @@
         "@electron-forge/plugin-fuses": "^7.8.3",
         "@electron/fuses": "^1.8.0",
         "electron": "37.3.1",
+        "esbuild": "^0.25.11",
         "prettier": "^3.6.2"
     }
 }

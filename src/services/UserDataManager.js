@@ -5,6 +5,9 @@ import socket from './Socket.js';
 import logger from './Logger.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
+import * as Sessions from './Sessions.js';
+import * as crypto from 'crypto';
+import mapNames from '../tables/map_names.json' with { type: 'json' };
 
 class UserDataManager {
     constructor(logger) {
@@ -22,13 +25,17 @@ class UserDataManager {
         this.logLock = new Lock();
         this.logDirExist = new Set();
 
+        // Session en cours (non persistée) + guard hooks
+        this.currentSession = null;
+        this._shutdownHookBound = false;
+
         this.enemyCache = {
             name: new Map(),
             hp: new Map(),
             maxHp: new Map(),
         };
 
-        // 自动保存
+        // Auto-save des logs JSON
         this.lastAutoSaveTime = 0;
         this.lastLogTime = 0;
         setInterval(() => {
@@ -37,29 +44,52 @@ class UserDataManager {
             this.saveAllUserData();
         }, 10 * 1000);
 
-        // New: Interval to clean up inactive users every 30 seconds
+        // Clean des joueurs inactifs
         setInterval(() => {
             this.cleanUpInactiveUsers();
         }, 30 * 1000);
     }
 
-    // New: Method to remove users who have not been updated in 60 seconds
+    /* ───────────────────────── lifecycle ───────────────────────── */
+
+    async init() {
+        await this.loadUserCache();
+        this._bindShutdownHooksOnce();
+    }
+
+    _bindShutdownHooksOnce() {
+        if (this._shutdownHookBound) return;
+        this._shutdownHookBound = true;
+
+        const finalize = (tag) => {
+            try {
+                // Persist la session en cours si présente
+                this._finalizeAndPersistSession(tag || 'process_exit');
+            } catch (e) {
+                logger.error('[SESSION] finalize on shutdown failed:', e);
+            }
+        };
+
+        process.on('SIGINT', () => { finalize('SIGINT'); process.exit(0); });
+        process.on('SIGTERM', () => { finalize('SIGTERM'); process.exit(0); });
+        process.on('beforeExit', () => finalize('beforeExit'));
+        process.on('exit', () => finalize('exit'));
+    }
+
+    /* ───────────────────────── housekeeping ───────────────────────── */
+
+    // Retire les joueurs inactifs > 60s
     cleanUpInactiveUsers() {
-        const inactiveThreshold = 60 * 1000; // 1 minute
+        const inactiveThreshold = 60 * 1000;
         const currentTime = Date.now();
 
         for (const [uid, user] of this.users.entries()) {
             if (currentTime - user.lastUpdateTime > inactiveThreshold) {
                 socket.emit('user_deleted', { uid });
-
                 this.users.delete(uid);
                 logger.info(`Removed inactive user with uid ${uid}`);
             }
         }
-    }
-
-    async init() {
-        await this.loadUserCache();
     }
 
     async loadUserCache() {
@@ -87,9 +117,7 @@ class UserDataManager {
 
     saveUserCacheThrottled() {
         this.pendingSave = true;
-        if (this.saveThrottleTimer) {
-            clearTimeout(this.saveThrottleTimer);
-        }
+        if (this.saveThrottleTimer) clearTimeout(this.saveThrottleTimer);
         this.saveThrottleTimer = setTimeout(async () => {
             if (this.pendingSave) {
                 await this.saveUserCache();
@@ -111,30 +139,20 @@ class UserDataManager {
         }
     }
 
+    /* ───────────────────────── user data API ───────────────────────── */
+
     getUser(uid) {
         if (!this.users.has(uid)) {
             const user = new UserData(uid);
             const cachedData = this.userCache.get(String(uid));
             if (cachedData) {
-                if (cachedData.name) {
-                    user.setName(cachedData.name);
-                }
-                if (cachedData.profession) {
-                    user.setProfession(cachedData.profession);
-                }
-                if (cachedData.subProfession) {  // Ajout de la gestion de la subProfession
-                    user.setSubProfession(cachedData.subProfession);  // Méthode à implémenter dans UserData
-                }
-                if (cachedData.fightPoint !== undefined && cachedData.fightPoint !== null) {
-                    user.setFightPoint(cachedData.fightPoint);
-                }
-                if (cachedData.maxHp !== undefined && cachedData.maxHp !== null) {
-                    user.setAttrKV('max_hp', cachedData.maxHp);
-                }
+                if (cachedData.name) user.setName(cachedData.name);
+                if (cachedData.profession) user.setProfession(cachedData.profession);
+                if (cachedData.subProfession) user.setSubProfession(cachedData.subProfession);
+                if (cachedData.fightPoint != null) user.setFightPoint(cachedData.fightPoint);
+                if (cachedData.maxHp != null) user.setAttrKV('max_hp', cachedData.maxHp);
             }
-            if (this.hpCache.has(uid)) {
-                user.setAttrKV('hp', this.hpCache.get(uid));
-            }
+            if (this.hpCache.has(uid)) user.setAttrKV('hp', this.hpCache.get(uid));
             this.users.set(uid, user);
         }
         return this.users.get(uid);
@@ -177,11 +195,8 @@ class UserDataManager {
         await this.logLock.acquire();
         try {
             if (!this.logDirExist.has(logDir)) {
-                try {
-                    await fsPromises.access(logDir);
-                } catch (error) {
-                    await fsPromises.mkdir(logDir, { recursive: true });
-                }
+                try { await fsPromises.access(logDir); }
+                catch { await fsPromises.mkdir(logDir, { recursive: true }); }
                 this.logDirExist.add(logDir);
             }
             await fsPromises.appendFile(logFile, logEntry, 'utf8');
@@ -197,9 +212,7 @@ class UserDataManager {
             user.setProfession(profession);
             logger.info(`Found profession ${profession} for uid ${uid}`);
             const uidStr = String(uid);
-            if (!this.userCache.has(uidStr)) {
-                this.userCache.set(uidStr, {});
-            }
+            if (!this.userCache.has(uidStr)) this.userCache.set(uidStr, {});
             this.userCache.get(uidStr).profession = profession;
             this.saveUserCacheThrottled();
         }
@@ -211,9 +224,7 @@ class UserDataManager {
             user.setName(name);
             logger.info(`Found player name ${name} for uid ${uid}`);
             const uidStr = String(uid);
-            if (!this.userCache.has(uidStr)) {
-                this.userCache.set(uidStr, {});
-            }
+            if (!this.userCache.has(uidStr)) this.userCache.set(uidStr, {});
             this.userCache.get(uidStr).name = name;
             this.saveUserCacheThrottled();
         }
@@ -225,9 +236,7 @@ class UserDataManager {
             user.setFightPoint(fightPoint);
             logger.info(`Found fight point ${fightPoint} for uid ${uid}`);
             const uidStr = String(uid);
-            if (!this.userCache.has(uidStr)) {
-                this.userCache.set(uidStr, {});
-            }
+            if (!this.userCache.has(uidStr)) this.userCache.set(uidStr, {});
             this.userCache.get(uidStr).fightPoint = fightPoint;
             this.saveUserCacheThrottled();
         }
@@ -238,9 +247,7 @@ class UserDataManager {
         user.attr[key] = value;
         if (key === 'max_hp') {
             const uidStr = String(uid);
-            if (!this.userCache.has(uidStr)) {
-                this.userCache.set(uidStr, {});
-            }
+            if (!this.userCache.has(uidStr)) this.userCache.set(uidStr, {});
             this.userCache.get(uidStr).maxHp = value;
             this.saveUserCacheThrottled();
         }
@@ -250,9 +257,7 @@ class UserDataManager {
     }
 
     updateAllRealtimeDps() {
-        for (const user of this.users.values()) {
-            user.updateRealtimeDps();
-        }
+        for (const user of this.users.values()) user.updateRealtimeDps();
     }
 
     getUserSkillData(uid) {
@@ -349,11 +354,8 @@ class UserDataManager {
                 userDatas.set(uid, userData);
             }
 
-            try {
-                await fsPromises.access(usersDir);
-            } catch (error) {
-                await fsPromises.mkdir(usersDir, { recursive: true });
-            }
+            try { await fsPromises.access(usersDir); }
+            catch { await fsPromises.mkdir(usersDir, { recursive: true }); }
 
             const allUserDataPath = path.join(logDir, 'allUserData.json');
             await fsPromises.writeFile(allUserDataPath, JSON.stringify(allUsersData, null, 2), 'utf8');
@@ -381,6 +383,237 @@ class UserDataManager {
     getGlobalSettings() {
         return config.GLOBAL_SETTINGS;
     }
+
+    /* ───────────────────────── sessions glue ───────────────────────── */
+
+    /** Construit l’objet joueur attendu par sessions.js */
+    _buildPlayerSnapshot(uid) {
+        const u = this.users.get(uid);
+        if (!u) return null;
+
+        const sum = u.getSummary();
+        const totalDamage = Number(sum.total_damage?.total || 0);
+        const totalHeal = Number(sum.total_healing?.total || 0);
+
+        // ⛔️ Skip joueurs sans dégâts et sans soins
+        if (totalDamage <= 0 && totalHeal <= 0) return null;
+
+        const skills = u.getSkillSummary() || {};
+
+        // Top sorts (damage)
+        const damageSkills = Object.values(skills)
+            .filter(s => (s.type || '').toLowerCase() === 'damage');
+        const topDamageSpells = damageSkills
+            .map(s => ({
+                id: s.id || s.skillId || s.displayName,
+                name: s.displayName || String(s.id || s.skillId || 'Skill'),
+                damage: Number(s.totalDamage || s.total || 0),
+            }))
+            .sort((a, b) => b.damage - a.damage)
+            .slice(0, 3);
+
+        // Top sorts (healing)
+        const healSkills = Object.values(skills)
+            .filter(s => (s.type || '').toLowerCase() === 'healing');
+        const topHealSpells = healSkills
+            .map(s => ({
+                id: s.id || s.skillId || s.displayName,
+                name: s.displayName || String(s.id || s.skillId || 'Skill'),
+                heal: Number(s.totalHealing || s.total || 0),
+            }))
+            .sort((a, b) => (b.heal - a.heal))
+            .slice(0, 3);
+
+        return {
+            uid: u.uid,
+            name: u.name || String(u.uid),
+            // le viewer regarde "profession" et devine la classe/icône
+            profession: u.profession + (u.subProfession ? ` ${u.subProfession}` : ''),
+            fightPoint: u.fightPoint,
+
+            // champs que sessions.js lit directement
+            dps: Number(sum.total_dps || 0),
+            hps: Number(sum.total_hps || 0),
+            totals: {
+                damage: Number(sum.total_damage?.total || 0),
+                heal: Number(sum.total_healing?.total || 0),
+            },
+
+            topDamageSpells,
+            topHealSpells,
+
+            // utile si tu veux afficher plus tard
+            attr: u.attr || {},
+        };
+    }
+
+
+    onInstanceChanged(seq, reason, extra = {}) {
+        logger.info(`[INSTANCE] Change detected: reason=${reason}, seq=${seq}, to=${extra?.to}`);
+
+        // 1) Finalise l'ancienne session (snapshot avant clear)
+        if (this.currentSession) {
+            const endedAt = Date.now();
+            const snapshotUsers = this.getAllUsersData();
+            const players = this.getUserIds()
+                .map(uid => this._buildPlayerSnapshot(uid))
+                .filter(Boolean);
+
+            if (players.length === 0) {
+                logger.info('[SESSION] Skip persist on instance change: empty session.');
+            } else {
+                const sessionToSave = {
+                    id: this.currentSession.id,
+                    name: this.currentSession.name,
+                    startedAt: this.currentSession.startedAt,
+                    endedAt,
+                    durationMs: Math.max(0, endedAt - this.currentSession.startedAt),
+                    reasonEnd: reason || 'instance_change',
+                    seq: this.currentSession.seq,
+                    instanceId: this.currentSession.instanceId,
+                    fromInstance: this.currentSession.fromInstance,
+                    partySize: players.length,
+                    snapshot: { players, usersAgg: snapshotUsers },
+                };
+
+                try {
+                    Sessions.addSession(sessionToSave);
+                    logger.info(`[SESSION] Persisted ${sessionToSave.name} (${sessionToSave.partySize} joueurs)`);
+                } catch (e) {
+                    logger.error('[SESSION] Failed to persist session:', e);
+                }
+            }
+
+            this.currentSession = null;
+        }
+
+        // 2) Reset complet du meter
+        this.clearAll();
+
+        // 3) Nom lisible = nom de la map + date/heure locale
+        const mapId = extra?.to ?? seq;
+        const mapName = mapNames[String(mapId)] || `Instance ${mapId}`;
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const sessionName =
+            `${mapName} — ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+            `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+        // 4) Démarre la nouvelle session en mémoire
+        this.currentSession = {
+            id: crypto.randomUUID(),
+            name: sessionName,
+            startedAt: Date.now(),
+            reasonStart: reason,
+            seq,
+            instanceId: mapId,
+            fromInstance: extra?.from ?? null,
+        };
+
+        logger.info(`[SESSION] Started new session: ${sessionName}`);
+
+        // 5) Notifie le front (reset UI)
+        socket.emit('session_started', {
+            id: this.currentSession.id,
+            name: this.currentSession.name,
+            startedAt: this.currentSession.startedAt,
+            instanceId: this.currentSession.instanceId,
+            fromInstance: this.currentSession.fromInstance,
+            seq: this.currentSession.seq,
+            reasonStart: this.currentSession.reasonStart,
+        });
+        socket.emit('dps_cleared', { at: Date.now() });
+        socket.emit('session_changed', { seq, reason, ...extra }); // compat
+    }
+
+    _finalizeAndPersistSession(reasonEnd = 'instance_change') {
+        if (!this.currentSession) return;
+
+        const endedAt = Date.now();
+        const snapshotUsers = this.getAllUsersData();
+
+        const players = this.getUserIds()
+            .map(uid => this._buildPlayerSnapshot(uid)) // <- déjà en place
+            .filter(Boolean);
+
+        // ⛔️ Rien à sauvegarder si aucun joueur n’a fait de dmg/soin
+        if (players.length === 0) {
+            this.currentSession = null;               // on clôt quand même la session en mémoire
+            logger.info('[SESSION] Skip persist: empty session (no active players).');
+            return;
+        }
+
+        const sessionToSave = {
+            id: this.currentSession.id,
+            name: this.currentSession.name,
+            startedAt: this.currentSession.startedAt,
+            endedAt,
+            durationMs: Math.max(0, endedAt - this.currentSession.startedAt),
+            reasonStart: this.currentSession.reasonStart,
+            reasonEnd,
+            seq: this.currentSession.seq,
+            instanceId: this.currentSession.instanceId,
+            fromInstance: this.currentSession.fromInstance,
+            partySize: players.length,
+            snapshot: { usersAgg: snapshotUsers, players },
+        };
+
+        try {
+            Sessions.addSession(sessionToSave);
+            logger.info(`[SESSION] Persisted: ${sessionToSave.name} (${sessionToSave.partySize} joueurs)`);
+        } catch (e) {
+            logger.error('[SESSION] Failed to persist session:', e);
+        } finally {
+            this.currentSession = null;
+        }
+    }
+
+    /**
+ * Démarre une nouvelle session vide (utilisée après un clear manuel ou un restart).
+ * Construit toujours un nom horodaté complet avec secondes.
+ */
+    _startNewSession(extra = {}, reason = 'manual_restart') {
+        const pad = (n) => String(n).padStart(2, '0');
+        const now = new Date();
+        const timestamp =
+            `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
+            `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+        // Nom de base prioritaire : mapNameBase > mapName > instanceId > fallback
+        const baseName =
+            extra.mapNameBase ||
+            extra.mapName ||
+            (extra.to != null ? (mapNames[String(extra.to)] || `Instance ${extra.to}`) : null) ||
+            'Manual Restart';
+
+        const sessionName = `${baseName} — ${timestamp}`;
+
+        // Création de la nouvelle session en mémoire
+        this.currentSession = {
+            id: crypto.randomUUID(),
+            name: sessionName,
+            startedAt: Date.now(),
+            reasonStart: reason,
+            seq: extra.seq ?? undefined,
+            instanceId: extra.to ?? null,
+            fromInstance: extra.from ?? null,
+        };
+
+        logger.info(`[SESSION] Started new session: ${sessionName}`);
+
+        // Notifie l’UI pour reset l’affichage
+        socket.emit('session_started', {
+            id: this.currentSession.id,
+            name: this.currentSession.name,
+            startedAt: this.currentSession.startedAt,
+            instanceId: this.currentSession.instanceId,
+            fromInstance: this.currentSession.fromInstance,
+            seq: this.currentSession.seq,
+            reasonStart: this.currentSession.reasonStart,
+        });
+        socket.emit('dps_cleared', { at: Date.now() });
+    }
+
 }
 
 const userDataManager = new UserDataManager();

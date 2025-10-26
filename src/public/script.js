@@ -71,6 +71,19 @@
         spellWindowWatchdog: /** @type {number|null} */ (null),
     };
 
+    window.__sessionStartTs ??= null;
+    window.__lastUpdateTs ??= null;
+
+    function bringToFront(winRef, nameHint) {
+        try { window.focus(); } catch { }
+        try { winRef?.focus?.(); } catch { }
+
+        setTimeout(() => { try { winRef?.focus?.(); } catch { } }, 0);
+        setTimeout(() => { try { winRef?.focus?.(); } catch { } }, 120);
+
+        try { window.electronAPI?.focusChildWindow?.(nameHint || ""); } catch { }
+    }
+
     // ==========================================================================
     // 3) Utilitaires purs
     //    SRP: fonctions pures & petites. Testables. Aucune dépendance DOM.
@@ -191,12 +204,13 @@
         opacity: /** @type {HTMLInputElement} */ ($("#opacitySlider")),
         serverStatus: $("#serverStatus"),
         tabButtons: $$(".tab-button"),
-        allButtons: [$("#clearButton"), $("#pauseButton"), $("#helpButton"), $("#settingsButton"), $("#closeButton")],
+        allButtons: [$("#clearButton"), $("#pauseButton"), $("#helpButton"), $("#settingsButton"), $("#closeButton"), $("#btnOpenSessions")],
         popup: {
             container: $("#spellPopup"),
             title: $("#popupTitle"),
             list: $("#spellList"),
         },
+        sessionsBtn: $("#btnOpenSessions"),
     };
 
     function setBackgroundOpacity(v) {
@@ -303,14 +317,36 @@
                     fill.style.background = `linear-gradient(90deg, ${baseColor}, rgba(0,0,0,0.3))`;
 
                     const currentSrcs = Array.from(specIcons.querySelectorAll("img")).map((img) => img.getAttribute("src"));
-                    const desiredSrcs = specFiles.map((f) => `assets/specs/${f}`);
-                    if (currentSrcs.join(",") !== desiredSrcs.join(",")) {
+
+                    const ASSETS_BASES = ["assets/classes/", "assets/specs/"];
+
+                    const desiredFiles = (specFiles || []).slice();
+
+                    const currentFiles = Array.from(specIcons.querySelectorAll("img"))
+                        .map(img => img.dataset.file || "");
+
+                    if (currentFiles.join("|") !== desiredFiles.join("|")) {
                         specIcons.replaceChildren();
-                        for (const f of desiredSrcs) {
+
+                        for (const f of desiredFiles) {
                             const img = document.createElement("img");
-                            img.src = f;
                             img.className = "spec-icon";
-                            img.onerror = () => (img.style.display = "none");
+                            img.dataset.file = f;
+                            img.decoding = "async";
+                            img.loading = "lazy";
+
+                            img.onerror = () => {
+                                // fallback unique vers /specs/ si /classes/ échoue
+                                if (!img.dataset.fallbackTried) {
+                                    img.dataset.fallbackTried = "1";
+                                    img.src = `${ASSETS_BASES[1]}${f}`;
+                                } else {
+                                    // si fallback échoue aussi, on retire proprement l’élément
+                                    img.remove();
+                                }
+                            };
+
+                            img.src = `${ASSETS_BASES[0]}${f}`;
                             specIcons.appendChild(img);
                         }
                     }
@@ -414,16 +450,18 @@
             if (State.spellWindowWatchdog) { clearInterval(State.spellWindowWatchdog); State.spellWindowWatchdog = null; }
         },
 
+        // --- Spells.openWindowForUser : réouverture + focus fiable
         openWindowForUser(userId) {
             State.currentSpellUserId = userId;
 
             const DETAILS_URL = "./details/index.html";
+            const NAME = "SpellDetails";
 
             // (ré)ouvre ou réutilise la fenêtre
             if (!State.spellWindowRef || State.spellWindowRef.closed) {
                 State.spellWindowRef = window.open(
                     DETAILS_URL,
-                    "SpellDetails",
+                    NAME,
                     "popup,width=780,height=720,menubar=0,toolbar=0,location=0,status=0,resizable=1"
                 );
 
@@ -432,30 +470,28 @@
                 State.spellWindowWatchdog = window.setInterval(() => {
                     if (!State.spellWindowRef || State.spellWindowRef.closed) Spells.closeWindowIfAny();
                 }, 1000);
-            } else {
-                try { State.spellWindowRef.focus(); } catch { }
-                if (Spells.bringWindowToFront) Spells.bringWindowToFront();
             }
+
+            // => toujours amener au premier plan (renderer + IPC)
+            try { window.focus(); } catch { }
+            Spells.bringWindowToFront?.();
+            try { window.electronAPI?.focusChildWindow?.(NAME); } catch { }
 
             const payload = Spells.buildSpellPayload(userId);
             if (!payload) return;
 
             // --- Handshake: on attend "details-ready", puis on envoie le payload ---
             let sent = false;
-
             const send = () => {
                 if (sent || !State.spellWindowRef || State.spellWindowRef.closed) return;
                 try {
-                    // si même origine, on peut mettre location.origin; sinon "*"
                     State.spellWindowRef.postMessage({ type: "spell-data", payload }, location.origin);
                     sent = true;
                 } catch {
-                    // la fenêtre n'est peut-être pas prête : retente un peu plus tard
                     setTimeout(send, 120);
                 }
             };
 
-            // écoute une seule fois le signal "ready" provenant de la fenêtre details
             const onReady = (ev) => {
                 if (ev.source !== State.spellWindowRef) return;
                 if (ev?.data?.type === "details-ready") {
@@ -556,6 +592,7 @@
                 } else {
                     console.error("Failed to clear data:", result.msg);
                 }
+
                 setTimeout(() => setServerStatus(prev), 1000);
             } catch (err) {
                 console.error("Clear error:", err);
@@ -632,6 +669,9 @@
             });
 
             State.socket.on("data", (data) => {
+                if (!window.__sessionStartTs) window.__sessionStartTs = Date.now();
+                window.__lastUpdateTs = Date.now();
+
                 Data.processDataUpdate(data);
                 State.lastWsMessageTs = Date.now();
             });
@@ -646,6 +686,20 @@
             State.socket.on("connect_error", (err) => {
                 console.error("WebSocket error:", err);
                 setServerStatus("disconnected");
+            });
+
+            State.socket.on('session_started', (data) => {
+                console.log('Nouvelle session:', data);
+                setServerStatus('cleared');
+                State.users = {};
+                Renderer.renderDataList([], State.activeTab);
+            });
+
+            State.socket.on('session_changed', (data) => {
+                console.log('Instance changée:', data);
+                setServerStatus('cleared');
+                State.users = {};
+                Renderer.renderDataList([], State.activeTab);
             });
         },
 
@@ -700,6 +754,69 @@
 
     document.addEventListener("DOMContentLoaded", bootstrap);
 
+    // Fournit au module sessions.js une lecture *readonly* de l'état courant.
+    function __getOverlayData() {
+        // on clone pour éviter toute mutation externe
+        const users = JSON.parse(JSON.stringify(State.users));
+        const skillsByUser = JSON.parse(JSON.stringify(State.skillsByUser));
+        return { users, skillsByUser };
+    }
+
+    // === Fenêtre "Sessions" (historique) ===
+    const SessionsOverlay = (() => {
+        let win = null;
+        let watchdog = null;
+
+        // --- SessionsOverlay.open : réouverture + focus fiable
+        function open() {
+            const url = "./sessions/index.html";
+            const NAME = "SessionsWindow";
+
+            if (!win || win.closed) {
+                win = window.open(
+                    url,
+                    NAME,
+                    "popup,width=1200,height=940,menubar=0,toolbar=0,location=0,status=0,resizable=1"
+                );
+                if (watchdog) clearInterval(watchdog);
+                watchdog = setInterval(() => {
+                    if (!win || win.closed) { win = null; clearInterval(watchdog); watchdog = null; }
+                }, 1000);
+            }
+
+            // => toujours amener au premier plan (renderer + IPC)
+            try { window.focus(); } catch { }
+            try { win?.focus?.(); } catch { }
+            setTimeout(() => { try { win?.focus?.(); } catch { } }, 0);
+            try { window.electronAPI?.focusChildWindow?.(NAME); } catch { }
+        }
+
+
+        // Le child nous demande d’enregistrer une session (car lui n’a pas accès à l’état runtime)
+        window.addEventListener("message", async (ev) => {
+            if (!ev?.data) return;
+            const { type } = ev.data;
+            if (type === "save-session") {
+                try {
+                    const id = await window.Sessions?.saveCurrentSession?.();
+                    ev.source?.postMessage?.({ type: "session-saved", id }, "*");
+                } catch (e) {
+                    ev.source?.postMessage?.({ type: "session-save-error", error: String(e) }, "*");
+                }
+            }
+        });
+
+        return { open };
+    })();
+
+    // wiring du bouton (au DOMContentLoaded déjà existant si tu en as un)
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("btnOpenSessions")?.addEventListener("click", () => {
+            SessionsOverlay.open();
+        });
+    });
+
+
     // ==========================================================================
     // 12) API publique (facilite les tests / interactions externes)
     // ==========================================================================
@@ -712,5 +829,6 @@
         closeClient: UI.closeClient,
         showPopupForUser: UI.showPopupForUser,
         closePopup: UI.closePopup,
+        getOverlayData: __getOverlayData
     });
 })();

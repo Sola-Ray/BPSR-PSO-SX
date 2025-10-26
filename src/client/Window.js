@@ -1,5 +1,4 @@
-import { BrowserWindow } from 'electron';
-import { screen } from 'electron';
+import { BrowserWindow, screen } from 'electron';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
@@ -8,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const iconPath = path.join(__dirname, '../resources/app.ico');
-const preloadPath = path.join(__dirname, '../preload.js');
+const preloadPath = path.join(__dirname, '../preload.cjs');
 const htmlPath = path.join(__dirname, '../public/index.html');
 const configPath = path.join(__dirname, '../../windowConfig.json');
 
@@ -32,10 +31,7 @@ class Window {
         this.config = this._loadConfig();
     }
 
-    /**
-     * Loads window configuration from the JSON file.
-     * @private
-     */
+    /** Loads window configuration from the JSON file. */
     _loadConfig() {
         try {
             if (fs.existsSync(configPath)) {
@@ -44,7 +40,7 @@ class Window {
                 const config = { ...this.defaultConfig, ...loadedConfig };
 
                 if (!this._isPositionVisible(config.x, config.y, config.width, config.height)) {
-                    // Si position hors écran, on remet undefined pour que la fenêtre soit centrée par défaut
+                    // Si position hors écran, recentrer
                     config.x = undefined;
                     config.y = undefined;
                 }
@@ -56,11 +52,7 @@ class Window {
         return this.defaultConfig;
     }
 
-
-    /**
-     * Saves the current window state to the JSON file.
-     * @private
-     */
+    /** Saves the current window state to the JSON file. */
     _saveConfig() {
         if (!this._window) return;
         try {
@@ -79,19 +71,16 @@ class Window {
         }
     }
 
-    /**
-     * Vérifie si la position est visible sur au moins un écran.
-     * Sinon, on remet la position par défaut.
-     */
+    /** Check if position is visible on any display. */
     _isPositionVisible(x, y, width, height) {
         const displays = screen.getAllDisplays();
         return displays.some(display => {
-            const bounds = display.bounds;
+            const b = display.bounds;
             return (
-                x >= bounds.x &&
-                y >= bounds.y &&
-                x + width <= bounds.x + bounds.width &&
-                y + height <= bounds.y + bounds.height
+                x >= b.x &&
+                y >= b.y &&
+                x + width <= b.x + b.width &&
+                y + height <= b.y + b.height
             );
         });
     }
@@ -112,12 +101,31 @@ class Window {
             frame: false,
             title: 'BPSR-PSO-SX',
             icon: iconPath,
+            autoHideMenuBar: true, // <- option correcte
             webPreferences: {
                 preload: preloadPath,
                 contextIsolation: true,
                 nodeIntegration: false,
+                sandbox: false,
+                nativeWindowOpen: true, // <- indispensable pour que window.open crée un vrai BrowserWindow
             },
-            autoMenuBar: true,
+        });
+
+        // Assigne le même preload (et mêmes flags) aux fenêtres ouvertes via window.open
+        this._window.webContents.setWindowOpenHandler((_details) => {
+            return {
+                action: 'allow',
+                overrideBrowserWindowOptions: {
+                    // parent: this._window, // (optionnel) si vous voulez les garder au premier plan de l'app
+                    modal: false,
+                    webPreferences: {
+                        preload: preloadPath,
+                        contextIsolation: true,
+                        nodeIntegration: false,
+                        sandbox: false,
+                    },
+                },
+            };
         });
 
         this._window.setAlwaysOnTop(true, 'normal');
@@ -137,10 +145,7 @@ class Window {
         return this._window;
     }
 
-    /**
-     * Retrieves the active BrowserWindow instance.
-     * @returns {BrowserWindow} The active window instance.
-     */
+    /** Retrieves the active BrowserWindow instance. */
     getWindow() {
         if (!this._window) {
             throw 'The window has not been created yet. Call create() first.';
@@ -150,46 +155,26 @@ class Window {
 
     // --- Window State & Control Methods ---
 
-    setPosition(x, y) {
-        this.getWindow().setPosition(x, y);
-    }
+    setPosition(x, y) { this.getWindow().setPosition(x, y); }
+    getPosition() { return this.getWindow().getPosition(); }
 
-    getPosition() {
-        return this.getWindow().getPosition();
-    }
-
-    setSize(width, height) {
-        this.getWindow().setSize(width, height);
-    }
-
-    getSize() {
-        return this.getWindow().getSize();
-    }
-
-    getMinimumSize() {
-        return this.getWindow().getMinimumSize();
-    }
+    setSize(width, height) { this.getWindow().setSize(width, height); }
+    getSize() { return this.getWindow().getSize(); }
+    getMinimumSize() { return this.getWindow().getMinimumSize(); }
 
     setPassthrough(enabled) {
         this.config.passthrough = enabled;
-        const window = this.getWindow();
-
+        const win = this.getWindow();
         if (enabled) {
-            window.setIgnoreMouseEvents(true, { forward: true });
+            win.setIgnoreMouseEvents(true, { forward: true });
         } else {
-            window.setIgnoreMouseEvents(false);
+            win.setIgnoreMouseEvents(false);
         }
-
-        window.webContents.send('passthrough-toggled', enabled);
+        win.webContents.send('passthrough-toggled', enabled);
     }
 
-    togglePassthrough() {
-        this.setPassthrough(!this.config.passthrough);
-    }
-
-    getPassthrough() {
-        return this.config.passthrough;
-    }
+    togglePassthrough() { this.setPassthrough(!this.config.passthrough); }
+    getPassthrough() { return this.config.passthrough; }
 
     minimizeOrRestore() {
         const minHeight = this.getMinimumSize()[1];
@@ -203,9 +188,7 @@ class Window {
         }
     }
 
-    loadURL(url) {
-        this._window.loadURL(url);
-    }
+    loadURL(url) { this._window.loadURL(url); }
 }
 
 const window = new Window();

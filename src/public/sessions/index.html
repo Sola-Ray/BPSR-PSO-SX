@@ -1,0 +1,88 @@
+﻿<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8" />
+    <title>Sessions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+               img-src 'self' data:;
+               style-src 'self';
+               script-src 'self';
+               connect-src 'self' ws: wss:;">
+    <!-- Reuse the details.css theme for a consistent look -->
+    <link rel="stylesheet" href="../details/details.css" />
+    <link rel="stylesheet" href="./css/sessions.css" />
+</head>
+<body>
+    <main class="spell-window" id="windowRoot">
+        <header class="popup-header">
+            <h1>Sessions</h1>
+            <div class="popup-actions">
+                <div class="seg" role="group" aria-label="Filters">
+                    <button class="seg-btn active" data-filter="all">All</button>
+                    <!--
+                    <button class="seg-btn" data-filter="raid">Raids</button>
+                    <button class="seg-btn" data-filter="dungeon">Dungeons</button>
+                    -->
+                </div>
+                <div class="seg" role="group" aria-label="Sort">
+                    <button class="seg-btn sort-btn active" data-sort="damage">Damage</button>
+                    <button class="seg-btn sort-btn" data-sort="healing">Healing</button>
+                    <button class="seg-btn sort-btn" data-sort="dps">DPS</button>
+                    <button class="seg-btn sort-btn" data-sort="hps">HPS</button>
+                    <button class="seg-btn sort-btn" data-sort="name">Name</button>
+                </div>
+
+                <button class="seg-btn" id="btnShare" title="Copy a snapshot">Share</button>
+                <div id="shareToast" class="hidden" aria-live="polite">Copied ✅</div>
+                <button class="close-btn" type="button" id="btnClose" aria-label="Close">Close</button>
+            </div>
+        </header>
+
+        <section class="popup-body">
+            <!-- 2-panel layout: master/detail -->
+            <div class="sessions-layout">
+                <aside class="sess-list-wrap" aria-label="Session list">
+                    <!-- 🔍 Search bar moved here -->
+                    <div class="sess-search">
+                        <label class="visually-hidden" for="sessSearch">Search</label>
+                        <input id="sessSearch" type="search" placeholder="Search" inputmode="search" autocomplete="off" />
+                    </div>
+
+                    <ul id="sessionsList" class="sess-list" aria-live="polite"></ul>
+                </aside>
+
+                <section class="sess-detail-wrap" aria-label="Details">
+                    <div id="sessionHeader" class="sess-header-row">Select a session on the left</div>
+
+                    <div id="playersGrid" class="players-grid" aria-live="polite"></div>
+
+                    <div class="table-wrap hidden" id="legacyTableWrap">
+                        <table class="spell-table" id="sessionTable">
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th class="col-num">Damage Done</th>
+                                    <th class="col-num">Healing Done</th>
+                                    <th>Top 3 Spells</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessionTbody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <footer class="popup-footer">
+            <span id="footerInfo">—</span>
+        </footer>
+    </main>
+
+    <noscript>JavaScript must be enabled.</noscript>
+    <script src="./js/share.js" defer></script>
+    <script src="./js/sessions.js" defer></script>
+</body>
+</html>

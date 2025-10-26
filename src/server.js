@@ -10,6 +10,8 @@ import { PacketInterceptor } from './services/PacketInterceptor.js';
 import userDataManager from './services/UserDataManager.js';
 import socket from './services/Socket.js';
 import logger from './services/Logger.js';
+import sessionsRoutes from './routes/sessions.js';
+
 
 import skillConfig from './tables/skill_names.json' with { type: 'json' };
 
@@ -36,8 +38,14 @@ class Server {
                 app.use(cors());
                 app.use(express.static(path.join(__dirname, 'public')));
 
+                app.get('/share-canvas', (_req, res) => {
+                    res.sendFile(path.join(__dirname, 'public', 'share-canvas.html'));
+                });
+
                 const apiRouter = createApiRouter(isPaused, SETTINGS_PATH);
                 app.use('/api', apiRouter);
+
+                app.use('/api/sessions', sessionsRoutes);
 
                 this.server = http.createServer(app);
                 this.server.on('error', (err) => reject(err));

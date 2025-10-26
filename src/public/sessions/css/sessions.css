@@ -1,0 +1,913 @@
+﻿/* ======================================================
+   Sessions — Clean CSS (compact list + detailed cards)
+   ====================================================== */
+
+/* ---------- Tokens ---------- */
+:root {
+    color-scheme: dark;
+    --bg: #141618;
+    --text: #fff;
+    --border: rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --accent-dps: #ff4d4f;
+    --accent-hps: #27e0a3;
+    --accent-tank: #4898ff;
+    --chip-bg: rgba(255,255,255,.16);
+    --bar-bg: rgba(255,255,255,.26);
+    --card-grad-1: rgba(255,255,255,.12);
+    --card-grad-2: rgba(255,255,255,.07);
+    --scrollbar-thumb: rgba(255,255,255,.22);
+    --scrollbar-thumb-hover: rgba(255,255,255,.30);
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --gap-2: 6px;
+    --gap-3: 8px;
+    --gap-4: 10px;
+    --fs-12: 12px;
+    --fs-11: 11px;
+    --fs-10: 10px;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ======================================================
+   Layout
+   ====================================================== */
+.sessions-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--gap-4);
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
+.sess-list-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    overflow: auto;
+}
+
+.sess-detail-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-3);
+    min-height: 0;
+    overflow: hidden;
+}
+
+.sess-header-row {
+    font-weight: 700;
+    padding: 6px 2px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ======================================================
+   Session list (compact)
+   ====================================================== */
+#sessionsList {
+    list-style: none;
+    margin: 0;
+    padding: var(--gap-2);
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.sess-item {
+    list-style: none;
+}
+
+.sess-card {
+    --bg: rgba(255,255,255,.03);
+    --bg-hover: rgba(255,255,255,.06);
+    --border: rgba(255,255,255,.08);
+    --border-active: rgba(99,132,255,.45);
+    display: grid;
+    grid-template-columns: 12px 1fr auto; /* compact */
+    align-items: center;
+    gap: .6rem;
+    padding: .44rem .56rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: .6rem;
+    transition: background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .06s ease;
+}
+
+.sess-item:hover .sess-card {
+    background: var(--bg-hover);
+    border-color: rgba(255,255,255,.12);
+}
+
+.sess-item.active .sess-card {
+    background: linear-gradient(0deg, rgba(99,132,255,.14), rgba(99,132,255,.14));
+    border-color: var(--border-active);
+    box-shadow: 0 0 0 2px rgba(99,132,255,.18) inset;
+}
+
+.sess-item:focus-within .sess-card {
+    box-shadow: 0 0 0 2px rgba(255,255,255,.18) inset;
+    border-color: rgba(255,255,255,.25);
+}
+
+/* left: dot avatar */
+.sess-left {
+    display: flex;
+}
+
+.sess-avatar-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(99,132,255,.85);
+    box-shadow: 0 0 0 2px rgba(99,132,255,.25);
+    align-self: center;
+}
+
+/* middle: title + meta */
+.sess-mid {
+    min-width: 0;
+}
+
+.sess-title-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    line-height: 1.05;
+}
+
+.sess-title {
+    font-weight: 750;
+    font-size: 12.5px;
+    letter-spacing: .2px;
+}
+
+.sess-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.08);
+}
+
+    .sess-badge.badge-run {
+        background: rgba(180,180,255,.12);
+        border-color: rgba(180,180,255,.30);
+        color: #ccd1ff;
+    }
+
+    .sess-badge.badge-raid {
+        background: rgba(255,120,120,.12);
+        border-color: rgba(255,120,120,.35);
+        color: #ffbdbd;
+    }
+
+    .sess-badge.badge-donjon {
+        background: rgba(120,200,255,.12);
+        border-color: rgba(120,200,255,.35);
+        color: #c8e2ff;
+    }
+
+.sess-meta-line {
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: 11px;
+    opacity: .85;
+    white-space: nowrap;
+}
+
+    .sess-meta-line .sep {
+        opacity: .5;
+    }
+
+/* right: delete + chevron */
+.sess-right {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.chev {
+    opacity: .28;
+    transition: transform .15s ease, opacity .15s ease;
+}
+
+.sess-card:hover .chev {
+    opacity: .52;
+    transform: translateX(1px);
+}
+
+.btn-icon.sess-del {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: .22rem;
+    border-radius: .4rem;
+    opacity: .25;
+    transition: opacity .15s ease, background .15s ease, transform .06s ease;
+}
+
+    .sess-card:hover .btn-icon.sess-del,
+    .btn-icon.sess-del:focus-visible {
+        opacity: 1;
+    }
+
+    .btn-icon.sess-del:hover {
+        background: rgba(255,77,77,.12);
+    }
+
+    .btn-icon.sess-del:active {
+        transform: scale(.96);
+        background: rgba(255,77,77,.18);
+    }
+
+    .btn-icon.sess-del svg {
+        display: block;
+    }
+
+/* ======================================================
+   Players grid + scrollbars
+   ====================================================== */
+#playersGrid.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px,1fr));
+    gap: var(--gap-4);
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+#playersGrid {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+    #playersGrid::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #playersGrid::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 999px;
+    }
+
+        #playersGrid::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+        }
+
+/* ======================================================
+   Player cards (right panel)
+   ====================================================== */
+.player-card {
+    --class-accent: #999;
+    --class-accent-18: color-mix(in oklab, var(--class-accent) 18%, transparent);
+    --class-accent-32: color-mix(in oklab, var(--class-accent) 32%, transparent);
+    --class-accent-50: color-mix(in oklab, var(--class-accent) 50%, transparent);
+    --class-accent-65: color-mix(in oklab, var(--class-accent) 65%, transparent);
+    position: relative;
+    border-radius: var(--r-lg);
+    padding: 12px;
+    display: grid;
+    gap: var(--gap-3);
+    background: linear-gradient(180deg, var(--card-grad-1), var(--card-grad-2)) padding-box, radial-gradient(70% 50% at 20% -10%, var(--class-accent-32), transparent 70%) padding-box, radial-gradient(60% 40% at 100% 120%, var(--class-accent-18), transparent 70%) padding-box;
+    box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 10px 22px rgba(0,0,0,.4), 0 0 0 1px var(--class-accent-18) inset;
+    transition: transform .12s ease, box-shadow .12s ease;
+    content-visibility: auto;
+    contain: content;
+}
+
+.player-card {
+    --ring-w: 2px;
+}
+
+    .player-card::before {
+        content: "";
+        position: absolute;
+        left: var(--ring-w);
+        right: var(--ring-w);
+        top: var(--ring-w);
+        height: 6px;
+        border-top-left-radius: calc(var(--r-lg) - var(--ring-w));
+        border-top-right-radius: calc(var(--r-lg) - var(--ring-w));
+        background: linear-gradient(90deg, var(--class-accent), var(--class-accent-50) 55%, transparent 95%);
+        z-index: 1;
+    }
+
+    .player-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: linear-gradient(180deg, var(--class-accent-65), var(--class-accent-32));
+        padding: var(--ring-w);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        opacity: .95;
+        z-index: 2;
+    }
+
+    .player-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 36px rgba(0,0,0,.5), 0 0 24px var(--class-accent-18);
+    }
+
+    .player-card:focus-within, .player-card:focus-visible {
+        outline: 2px solid var(--class-accent-50);
+        outline-offset: 2px;
+    }
+
+@supports not (-webkit-mask: linear-gradient(#000 0 0) content-box) {
+    .player-card {
+        box-shadow: 0 0 0 var(--ring-w) var(--class-accent-50) inset, 0 10px 22px rgba(0,0,0,.4);
+    }
+
+        .player-card::after {
+            display: none;
+        }
+}
+
+/* header */
+.pc-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--gap-4);
+    align-items: center;
+    padding-top: 2px;
+}
+
+.pc-avatar {
+    inline-size: 44px;
+    block-size: 44px;
+    border-radius: var(--r-md);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--class-accent-65);
+    background: radial-gradient(60% 60% at 50% 40%, var(--class-accent-18), transparent 70%), linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.10));
+    box-shadow: 0 0 0 2px var(--class-accent-32) inset, 0 0 16px var(--class-accent-18) inset;
+}
+
+    .pc-avatar::after {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: inherit;
+        mix-blend-mode: screen;
+        opacity: .55;
+        pointer-events: none;
+    }
+
+    .pc-avatar[data-role="dps"]::after {
+        box-shadow: 0 0 14px rgba(255,77,79,.45) inset;
+    }
+
+    .pc-avatar[data-role="heal"]::after {
+        box-shadow: 0 0 14px rgba(39,224,163,.45) inset;
+    }
+
+    .pc-avatar[data-role="tank"]::after {
+        box-shadow: 0 0 14px rgba(72,152,255,.45) inset;
+    }
+
+.pc-class-logo {
+    inline-size: 80%;
+    block-size: 80%;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,.35));
+}
+
+.pc-name {
+    font-weight: 800;
+    line-height: 1.1;
+    font-size: 14px;
+    letter-spacing: .2px;
+    text-shadow: 0 0 8px var(--class-accent-18);
+}
+
+.pc-meta {
+    font-size: 11.5px;
+    opacity: .95;
+}
+
+.pc-submeta {
+    display: flex;
+    gap: var(--gap-3);
+    margin-top: 2px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    font-size: var(--fs-10);
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--chip-bg);
+}
+
+    .badge.cls {
+        background: var(--class-accent-32);
+        border-color: var(--class-accent-50);
+        color: #fff;
+        text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    }
+
+.pill {
+    font-size: var(--fs-10);
+    padding: 3px 8px 2px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--chip-bg);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 800;
+}
+
+    .pill:is(.role-dps,.role-heal,.role-tank)::before {
+        content: "";
+        display: inline-block;
+        inline-size: 8px;
+        block-size: 8px;
+        margin-right: 6px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(0,0,0,.25) inset;
+        vertical-align: -1px;
+    }
+
+    .pill.role-dps::before {
+        background: var(--accent-dps);
+    }
+
+    .pill.role-heal::before {
+        background: var(--accent-hps);
+    }
+
+    .pill.role-tank::before {
+        background: var(--accent-tank);
+    }
+
+.role-dps {
+    background: rgba(255,80,80,.16);
+    border-color: rgba(255,80,80,.45);
+    color: #ff9c9e;
+}
+
+.role-heal {
+    background: rgba(70,255,180,.16);
+    border-color: rgba(70,255,180,.45);
+    color: #9fffd0;
+}
+
+.role-tank {
+    background: rgba(80,150,255,.16);
+    border-color: rgba(80,150,255,.45);
+    color: #a9c7ff;
+}
+
+.pc-right {
+    display: grid;
+    gap: var(--gap-2);
+    align-content: start;
+    justify-items: end;
+}
+
+.pc-ability {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    white-space: nowrap;
+    border-radius: 999px;
+    border: 1px solid var(--class-accent-50);
+    background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.10));
+    box-shadow: 0 0 0 1px rgba(0,0,0,.45) inset;
+}
+
+.pc-avatar[data-role="dps"] ~ .pc-right .pc-ability {
+    color: #ffb7b9;
+}
+
+.pc-avatar[data-role="heal"] ~ .pc-right .pc-ability {
+    color: #b9ffe4;
+}
+
+.pc-avatar[data-role="tank"] ~ .pc-right .pc-ability {
+    color: #c3d6ff;
+}
+
+/* bars */
+.pc-bars {
+    display: grid;
+    gap: var(--gap-2);
+}
+
+.meter {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    gap: var(--gap-2);
+    align-items: center;
+}
+
+    .meter label {
+        font-size: var(--fs-10);
+        font-weight: 700;
+        opacity: .78;
+        text-align: left;
+        padding-right: 2px;
+    }
+
+    .meter .value {
+        font-variant-numeric: tabular-nums;
+        font-weight: 900;
+        font-size: 12.5px;
+        text-align: right;
+        text-shadow: 0 0 6px var(--class-accent-18);
+    }
+
+.bar {
+    display: block;
+    inline-size: 100%;
+    block-size: 8px;
+}
+
+    .bar rect {
+        rx: 3px;
+        ry: 3px;
+    }
+
+    .bar .bg {
+        fill: var(--bar-bg);
+    }
+
+    .bar .fg-dps {
+        fill: var(--accent-dps);
+        filter: drop-shadow(0 0 3px rgba(255,77,79,.35));
+        transition: width .45s cubic-bezier(.22,.61,.36,1);
+    }
+
+    .bar .fg-hps {
+        fill: var(--accent-hps);
+        filter: drop-shadow(0 0 3px rgba(39,224,163,.35));
+        transition: width .45s cubic-bezier(.22,.61,.36,1);
+    }
+
+/* top spells */
+.pc-tops {
+    display: grid;
+    gap: var(--gap-2);
+}
+
+.tops-title {
+    font-size: var(--fs-10);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    opacity: .9;
+    font-weight: 800;
+    margin-top: 0;
+}
+
+.tops-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0;
+}
+
+.spell-line {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: var(--gap-3);
+    padding: 4px 8px;
+    border: 1px solid color-mix(in oklab, var(--class-accent) 12%, var(--border));
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.10));
+}
+
+.player-card:hover .spell-line {
+    border-color: var(--class-accent-32);
+}
+
+.spell-kind {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    block-size: 18px;
+    padding-inline: 6px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, currentColor 40%, transparent);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    background: var(--chip-bg);
+    color: #fff;
+}
+
+    .spell-kind.is-dps {
+        background: rgba(255,77,79,.12);
+        border-color: rgba(255,77,79,.35);
+        color: #ffb3b5;
+    }
+
+    .spell-kind.is-hps {
+        background: rgba(39,224,163,.12);
+        border-color: rgba(39,224,163,.35);
+        color: #b7f6df;
+    }
+
+.spell-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+    font-size: 12.5px;
+}
+
+.spell-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+    white-space: nowrap;
+    font-size: 12.5px;
+}
+
+.tops-list .spell-line:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.tops-list .spell-line:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* ======================================================
+   Class accent mapping
+   ====================================================== */
+.cc-wind_knight {
+    --class-accent: #4aff5a;
+}
+
+.cc-stormblade {
+    --class-accent: #a155ff;
+}
+
+.cc-frost_mage {
+    --class-accent: #00b4ff;
+}
+
+.cc-heavy_guardian {
+    --class-accent: #c08a5c;
+}
+
+.cc-shield_knight {
+    --class-accent: #f2d05d;
+}
+
+.cc-marksman {
+    --class-accent: #ff6a00;
+}
+
+.cc-soul_musician {
+    --class-accent: #ff4a4a;
+}
+
+.cc-verdant_oracle {
+    --class-accent: #6cff94;
+}
+
+.cc-default {
+    --class-accent: #999999;
+}
+
+/* fallback color-mix */
+@supports not (background: color-mix(in oklab, red 50%, transparent)) {
+    .cc-wind_knight {
+        --class-accent-18: #4aff5a2e;
+        --class-accent-32: #4aff5a52;
+        --class-accent-50: #4aff5a80;
+        --class-accent-65: #4aff5aa6;
+    }
+
+    .cc-stormblade {
+        --class-accent-18: #a155ff2e;
+        --class-accent-32: #a155ff52;
+        --class-accent-50: #a155ff80;
+        --class-accent-65: #a155ffa6;
+    }
+
+    .cc-frost_mage {
+        --class-accent-18: #00b4ff2e;
+        --class-accent-32: #00b4ff52;
+        --class-accent-50: #00b4ff80;
+        --class-accent-65: #00b4ffa6;
+    }
+
+    .cc-heavy_guardian {
+        --class-accent-18: #c08a5c2e;
+        --class-accent-32: #c08a5c52;
+        --class-accent-50: #c08a5c80;
+        --class-accent-65: #c08a5ca6;
+    }
+
+    .cc-shield_knight {
+        --class-accent-18: #f2d05d2e;
+        --class-accent-32: #f2d05d52;
+        --class-accent-50: #f2d05d80;
+        --class-accent-65: #f2d05da6;
+    }
+
+    .cc-marksman {
+        --class-accent-18: #ff6a002e;
+        --class-accent-32: #ff6a0052;
+        --class-accent-50: #ff6a0080;
+        --class-accent-65: #ff6a00a6;
+    }
+
+    .cc-soul_musician {
+        --class-accent-18: #ff4a4a2e;
+        --class-accent-32: #ff4a4a52;
+        --class-accent-50: #ff4a4a80;
+        --class-accent-65: #ff4a4aa6;
+    }
+
+    .cc-verdant_oracle {
+        --class-accent-18: #6cff942e;
+        --class-accent-32: #6cff9452;
+        --class-accent-50: #6cff9480;
+        --class-accent-65: #6cff94a6;
+    }
+
+    .cc-default {
+        --class-accent-18: #9999992e;
+        --class-accent-32: #99999952;
+        --class-accent-50: #99999980;
+        --class-accent-65: #999999a6;
+    }
+}
+
+/* ======================================================
+   Responsive
+   ====================================================== */
+@media (max-width: 920px) {
+    .sessions-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sess-list-wrap {
+        max-height: 30vh;
+    }
+}
+
+/* --- Make cards obviously clickable --- */
+.sess-item,
+.sess-card {
+    cursor: pointer;
+}
+
+/* Keep the real button as a button */
+.btn-icon.sess-del {
+    cursor: pointer;
+}
+
+/* --- Delete button: more visible, clearer affordance --- */
+.btn-icon.sess-del {
+    /* size & hit area */
+    min-width: 28px;
+    min-height: 28px;
+    padding: .22rem;
+    border-radius: .45rem;
+    /* visibility */
+    opacity: .75; /* visible even at rest */
+    color: #ff6b6b; /* red accent */
+    background: transparent;
+    /* motion */
+    transition: opacity .15s ease, background .15s ease, box-shadow .15s ease, transform .06s ease;
+}
+
+    /* tint the inline SVG through currentColor */
+    .btn-icon.sess-del svg path {
+        fill: currentColor;
+    }
+
+/* hover/active/focus states */
+.sess-card:hover .btn-icon.sess-del {
+    opacity: 1;
+}
+
+.btn-icon.sess-del:hover {
+    background: rgba(255,77,77,.14);
+    box-shadow: 0 0 0 1px rgba(255,77,77,.35) inset;
+}
+
+.btn-icon.sess-del:active {
+    transform: scale(.96);
+    background: rgba(255,77,77,.20);
+}
+
+.btn-icon.sess-del:focus-visible {
+    outline: 2px solid rgba(255,77,77,.45);
+    outline-offset: 2px;
+}
+
+/* When the card is selected, keep the delete button strong enough */
+.sess-item.active .btn-icon.sess-del {
+    opacity: .95;
+    color: #ff7f7f;
+}
+
+/* Delete icon fine-tuning */
+.btn-icon.sess-del {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    color: #ff6b6b;
+    opacity: .75;
+    background: transparent;
+    border: none;
+    border-radius: .45rem;
+    transition: opacity .15s ease, background .15s ease, transform .06s ease, color .2s ease;
+}
+
+    .btn-icon.sess-del svg {
+        display: block;
+        pointer-events: none;
+    }
+
+.sess-card:hover .btn-icon.sess-del {
+    opacity: 1;
+}
+
+.btn-icon.sess-del:hover {
+    background: rgba(255,77,77,.14);
+    color: #ff8787;
+    transform: scale(1.05);
+}
+
+.btn-icon.sess-del:active {
+    background: rgba(255,77,77,.20);
+    transform: scale(.94);
+}
+
+.btn-icon.sess-del:focus-visible {
+    outline: 2px solid rgba(255,77,77,.45);
+    outline-offset: 2px;
+}
+
+#shareToast {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    background: rgba(0,0,0,.7);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.15);
+    box-shadow: 0 6px 18px rgba(0,0,0,.35);
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .18s ease, transform .18s ease;
+    pointer-events: none;
+}
+
+    #shareToast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+.hidden {
+    display: none !important;
+}
+
+.sess-search {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color, #444);
+}
+
+    .sess-search input[type="search"] {
+        width: 100%;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color, #444);
+        background: var(--bg-secondary, #1a1a1a);
+        color: inherit;
+    }
