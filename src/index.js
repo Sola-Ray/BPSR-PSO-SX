@@ -73,12 +73,45 @@ safeHandle('focus-main-window', async () => {
     if (win) { win.show(); win.focus(); return true; }
     return false;
 });
-safeHandle('focus-child-window', async () => {
+safeHandle('focus-child-window', async (_evt, nameHint) => {
     const wins = BrowserWindow.getAllWindows();
-    const child = wins.find((w) => w.id !== MAIN_WINDOW_ID);
-    if (child) { child.show(); child.focus(); return true; }
-    return false;
+    const hint = String(nameHint || '').toLowerCase();
+
+    let target = null;
+
+    if (hint.includes('session')) {
+        target = wins.find(w =>
+            w.webContents?.getURL?.().includes('/sessions/') ||
+            w.getTitle?.().includes('Sessions')
+        );
+    } else if (hint.includes('detail')) {
+        target = wins.find(w =>
+            w.webContents?.getURL?.().includes('/details/') ||
+            w.getTitle?.().includes('Details')
+        );
+    }
+
+    // fallback : n'importe quelle autre fenêtre secondaire
+    if (!target) {
+        target = wins.find(w => w.id !== MAIN_WINDOW_ID);
+    }
+
+    if (!target) return false;
+
+    try {
+        target.show();
+        target.setAlwaysOnTop(true, 'screen-saver');
+        target.focus();
+        setTimeout(() => {
+            if (!target.isDestroyed()) target.setAlwaysOnTop(false);
+        }, 200);
+        return true;
+    } catch (e) {
+        console.error('[IPC focus-child-window] failed:', e);
+        return false;
+    }
 });
+
 
 /* -------------------- Bootstrap -------------------- */
 async function initialize() {
