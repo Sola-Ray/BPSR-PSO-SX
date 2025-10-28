@@ -448,10 +448,13 @@
 
         if (!scopeData.length) return;
 
-        // graduation dynamique : prend un multiple agréable (10k, 20k, 50k, etc.)
-        const base = 10_000;
-        let Y_TICK = base;
+        // --- Échelle commune DPS/HPS ---
+        const maxD = Math.max(1, ...scopeData.map(p => p.dps));
+        const maxH = Math.max(1, ...scopeData.map(p => p.hps));
+        const maxAll = Math.max(maxD, maxH);
 
+        // graduation dynamique : 1k / 2k / 5k / 10k / 20k / 50k
+        let Y_TICK = 10_000;
         if (maxAll > 200_000) Y_TICK = 50_000;
         else if (maxAll > 100_000) Y_TICK = 20_000;
         else if (maxAll > 60_000) Y_TICK = 10_000;
@@ -459,8 +462,7 @@
         else if (maxAll > 10_000) Y_TICK = 2_000;
         else Y_TICK = 1_000;
 
-        const maxY = Math.ceil(maxAll / Y_TICK) * Y_TICK;
-
+        const maxY = Math.ceil(maxAll / Y_TICK) * Y_TICK || Y_TICK;
 
         const now = scopeData.at(-1).t;
         const t0 = now - SCOPE_WINDOW_SEC;
