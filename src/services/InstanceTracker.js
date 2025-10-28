@@ -4,6 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { dumpSnapshot, diffInteresting } from '../debog/DebugVDataInspector.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,12 +61,19 @@ export class InstanceTracker {
         this.udm = userDataManager;
         this.debounceMs = Number(debounceMs) || 0;
 
+        // Debug inspector
+        this._lastInteresting = null;
+        this._inspectOutDir = './debug/vdata';
+
         // état public/minimal
         this.currentMapId = null;
         this.currentMapName = null;
 
         // scène courante (chez nous = id de scène autoritaire)
         this.currentSceneId = null;
+
+        // Line courante (canal) pour la scène courante
+        this.currentLineId = null;
 
         this.currentPlayerUuid = null;
         this.currentPlayerUid = null;
@@ -103,6 +111,7 @@ export class InstanceTracker {
             levelMapId: null,
             lastSceneId: null,
             sceneId: null,
+            lineId: null,
         };
     }
 
@@ -130,6 +139,13 @@ export class InstanceTracker {
         return id;
     }
 
+    static _deriveLineIdFromVData(vData) {
+        const lid = Number.isFinite(Number(vData?.SceneData?.LineId))
+            ? Number(vData.SceneData.LineId)
+            : null;
+        return lid;
+    }
+
     /* ───────── mutations / logs ───────── */
 
     setPlayerUuid(newUuidLong, { debounceMs = 0 } = {}) {
@@ -153,7 +169,8 @@ export class InstanceTracker {
 
         if (process?.env?.DEBUG_PLAYER_UUID === '1') {
             try {
-                this.logger?.debug?.('[DEBUG_UUID] player-uuid-changed (pre-bump)', {seq: this._instanceSeq + 1,
+                this.logger?.debug?.('[DEBUG_UUID] player-uuid-changed (pre-bump)', {
+                    seq: this._instanceSeq + 1,
                     prevUuid: prevUuid ? prevUuid.toString() : null,
                     newUuid: uuid.toString(),
                     newUid,
@@ -207,10 +224,7 @@ export class InstanceTracker {
         this.udm?.addLog?.(msg);
 
         const shouldTrigger = this._shouldTriggerInstance(reason);
-
-        if (!shouldTrigger) {
-            return;
-        }
+        if (!shouldTrigger) return;
 
         try {
             this.udm?.enemyCache?.name?.clear?.();
@@ -238,6 +252,9 @@ export class InstanceTracker {
         this.currentSceneId = nextSceneId;
         this._pendingScene = null;
 
+        // reset line à l'entrée de la nouvelle scène (sera réinitialisée à la prochaine update)
+        this.currentLineId = this._scene?.lineId ?? null;
+
         this.bump('scene-id-changed', {
             from: prevSceneId ?? srcSceneId ?? null,
             to: this.currentSceneId,
@@ -254,6 +271,7 @@ export class InstanceTracker {
 
         const levelMapId = isFiniteNum(sceneData.LevelMapId) ? Number(sceneData.LevelMapId) : null;
         const nextSceneId = levelMapId ?? null;
+        const nextLineId = isFiniteNum(sceneData.LineId) ? Number(sceneData.LineId) : null;
 
         const next = {
             dungeonGuid: u64ToString(sceneData.DungeonGuid),
@@ -264,6 +282,7 @@ export class InstanceTracker {
             levelMapId,
             lastSceneId: srcSceneId,
             sceneId: nextSceneId,
+            lineId: nextLineId,
         };
 
         const prev = this._scene || {};
@@ -296,23 +315,88 @@ export class InstanceTracker {
             levelMapId: next.levelMapId,
             srcSceneId,
             stagedSceneId: nextSceneId,
+            stagedLineId: nextLineId,
         });
     }
 
     updateFromVData(vData) {
         if (!vData) return;
 
+        const prevInteresting = this._lastInteresting;
+
         if (vData.SceneData) this.updateFromSceneData(vData.SceneData);
 
         const derivedSceneId = InstanceTracker._deriveSceneIdFromVData(vData);
+        const derivedLineId = InstanceTracker._deriveLineIdFromVData(vData);
+
+        // 1) Changement de scène (map) => logique existante
         if (derivedSceneId != null && derivedSceneId !== this.currentSceneId) {
             if (this._pendingScene) {
                 this._commitPendingScene('map-or-dungeon-changed');
             } else {
                 const prev = this.currentSceneId;
                 this.currentSceneId = derivedSceneId;
+                // reset line sur changement de scène
+                this.currentLineId = this._scene?.lineId ?? derivedLineId ?? null;
                 this.bump('scene-id-changed', { from: prev, to: this.currentSceneId, via: 'derived' });
             }
+        } else {
+            // 2) Même scène → détecter changement de LineId
+            // on privilégie _scene.lineId (staged) puis derivedLineId
+            const nextLine = this._scene?.lineId ?? derivedLineId ?? null;
+            if (nextLine != null) {
+                const prevLine = this.currentLineId;
+                if (prevLine == null) {
+                    this.currentLineId = nextLine; // init
+                } else if (prevLine !== nextLine) {
+                    const sceneId = this.currentSceneId;
+                    this.currentLineId = nextLine;
+                    // Déclenche un évènement d’instance, exactement comme un scene change
+                    this.bump('line-id-changed', {
+                        sceneId,
+                        fromLine: prevLine,
+                        toLine: nextLine,
+                        to: this.currentMapId,
+                        mapName: this.currentMapName,
+                    });
+                }
+            }
+        }
+
+        // Debug: dumps/diff VData (activable/désactivable par env var côté appelant si besoin)
+        try {
+            const dump = dumpSnapshot(this._inspectOutDir, 'vdata', vData, this.logger);
+            if (dump?.interesting) {
+                if (prevInteresting) {
+                    const { added, removed, changed } = diffInteresting(prevInteresting, dump.interesting);
+                    const hasSceneId = dump.interesting.find(
+                        x => x.key.endsWith('SceneData.LevelMapId') || x.key.endsWith('LevelMapId')
+                    );
+                    const prevSceneId = prevInteresting.find(
+                        x => x.key.endsWith('SceneData.LevelMapId') || x.key.endsWith('LevelMapId')
+                    )?.value;
+                    const currSceneId = hasSceneId?.value;
+
+                    // Log explicite si LineId flip détecté dans le diff (même scène)
+                    const prevLine = prevInteresting.find(x => x.key === 'SceneData.LineId')?.value;
+                    const currLine = dump.interesting.find(x => x.key === 'SceneData.LineId')?.value;
+                    if (
+                        prevSceneId != null &&
+                        currSceneId != null &&
+                        prevSceneId === currSceneId &&
+                        prevLine != null &&
+                        currLine != null &&
+                        prevLine !== currLine
+                    ) {
+                        this.logger?.info?.('[LINE-DETECT] LineId changed (diff)', {
+                            sceneId: currSceneId, from: prevLine, to: currLine
+                        });
+                    }
+                }
+                this._lastInteresting = dump.interesting;
+            }
+        } catch (e) {
+            this.logger?.warn?.('[VDATA DEBUG] failed', { err: e?.message });
         }
     }
 
@@ -359,6 +443,7 @@ export class InstanceTracker {
             }
             return false;
         }
-        return reason === 'scene-id-changed';
+        // On déclenche aussi sur changement de ligne
+        return reason === 'scene-id-changed' || reason === 'line-id-changed';
     }
 }
