@@ -36,6 +36,7 @@
     let lastRedraw = 0;
     let scopeCanvas, scopeCtx, scopeDPR = 1;
     let scopeHoverX = null;
+    let lastPlayerId = null;
 
     // ===== Utils =====
     const formatNumber = (n) => (isFinite(n) ? numberFmt.format(n) : "NaN");
@@ -423,6 +424,24 @@
         scopeCanvas.onmouseleave = () => { scopeHoverX = null; drawScope(); };
     };
 
+    const resetScope = (why = "player-change") => {
+        scopeData = [];
+        lastRedraw = 0;
+        scopeHoverX = null;
+
+        if (scopeCtx && scopeCanvas) {
+            const { width: W, height: H } = scopeCanvas.getBoundingClientRect();
+            scopeCtx.clearRect(0, 0, W, H);
+        }
+
+        // Remettre la légende à neutre
+        const ids = ["lgDpsNow", "lgDpsAvg", "lgHpsNow", "lgHpsAvg"];
+        for (const id of ids) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = "–";
+        }
+    };
+
     const pushScopePoint = (dps, hps) => {
         const now = performance.now() / 1000;
         const last = scopeData.at(-1);
@@ -457,10 +476,7 @@
         let Y_TICK = 10_000;
         if (maxAll > 200_000) Y_TICK = 50_000;
         else if (maxAll > 100_000) Y_TICK = 20_000;
-        else if (maxAll > 60_000) Y_TICK = 10_000;
-        else if (maxAll > 30_000) Y_TICK = 5_000;
-        else if (maxAll > 10_000) Y_TICK = 2_000;
-        else Y_TICK = 1_000;
+        else Y_TICK = 10_000;
 
         const maxY = Math.ceil(maxAll / Y_TICK) * Y_TICK || Y_TICK;
 
@@ -566,7 +582,18 @@
     // ===== Message bridge =====
     const handleMessage = (ev) => {
         if (!ev?.data || ev.data.type !== "spell-data") return;
-        DATA = ev.data.payload;
+        const incoming = ev.data.payload;
+        const incomingPlayerId = incoming?.user?.id;
+
+        console.log(incoming);
+        console.log("Received spell data for player ID:", incomingPlayerId);
+
+        if (incomingPlayerId != null && incomingPlayerId !== lastPlayerId) {
+            resetScope("player-change");
+            lastPlayerId = incomingPlayerId;
+        }
+
+        DATA = incoming;
         loadPrefs(); bindSortingOnce(); renderHeader();
         const key = `${DATA.user.id}_${DATA.items.length}_${sortKey}_${sortDir}_${modeFilter}_prefs_v1`;
         if (key !== lastRenderKey) { rebuildTable(); lastRenderKey = key; }

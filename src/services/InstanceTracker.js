@@ -202,8 +202,8 @@ export class InstanceTracker {
         this.currentSceneId = nextSceneId;
         this._pendingScene = null;
 
-        // reset line à l'entrée de la nouvelle scène
         this.currentLineId = this._scene?.lineId ?? null;
+        this.currentMapId = this._scene?.mapId ?? this.currentMapId;
 
         this.bump('scene-id-changed', {
             from: prevSceneId ?? srcSceneId ?? null,
@@ -220,6 +220,7 @@ export class InstanceTracker {
             : null;
 
         const levelMapId = isFiniteNumber(sceneData.LevelMapId) ? Number(sceneData.LevelMapId) : null;
+        const mapId = isFiniteNumber(sceneData.MapId) ? Number(sceneData.MapId) : null;
         const nextSceneId = levelMapId ?? null;
         const nextLineId = isFiniteNumber(sceneData.LineId) ? Number(sceneData.LineId) : null;
 
@@ -228,7 +229,7 @@ export class InstanceTracker {
             levelUuid: u64ToString(sceneData.LevelUuid),
             sceneGuid: u64ToString(sceneData.SceneGuid),
             recordId: u64ToString(sceneData.RecordId),
-            mapId: null,
+            mapId,
             levelMapId,
             lastSceneId: srcSceneId,
             sceneId: nextSceneId,
@@ -241,6 +242,14 @@ export class InstanceTracker {
 
         this._scene = next;
         this._pendingScene = { srcSceneId, dstSceneId: nextSceneId, nextSceneId, levelMapId };
+
+        if (mapId != null && this.currentMapId == null) {
+            this.currentMapId = mapId;
+        }
+
+        if (this.currentMapName == null) {
+            this.currentMapName = this.resolveMapName(sceneData, mapId);
+        }
 
         this.logger?.debug?.('[INSTANCE] staged scene via SceneData', this._pendingScene);
 
@@ -301,14 +310,16 @@ export class InstanceTracker {
                     this.currentLineId = nextLine; // init
                 } else if (prevLine !== nextLine) {
                     const sceneId = this.currentSceneId;
+                    const mapIdForEvent = this._scene?.mapId ?? this.currentMapId ?? this._scene?.levelMapId ?? sceneId ?? null;
                     this.currentLineId = nextLine;
                     // Déclenche un évènement d’instance, comme un scene change
                     this.bump('line-id-changed', {
                         sceneId,
                         fromLine: prevLine,
                         toLine: nextLine,
-                        to: this.currentMapId,
-                        mapName: this.currentMapName,
+                        to: mapIdForEvent,
+                        mapName: this.currentMapName ?? undefined,
+                        sceneMapId: this._scene?.mapId ?? null,
                     });
                 }
             }
