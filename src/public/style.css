@@ -82,6 +82,7 @@ body {
     box-shadow: none; /* supprime l'effet de brillance blanche */
     position: relative;
     background-clip: padding-box;
+    order: 0;
 }
 
     .data-item::before {

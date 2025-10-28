@@ -358,20 +358,20 @@
                     if (!seen.has(uid)) li.remove();
                 });
 
-                // REORDER + FLIP animation
+                // REORDER + FLIP animation (sans reparenting)
                 const currentLis = Array.from(Dom.columns.children);
                 const desiredOrder = users.map((u) => String(u.id));
-                const orderChanged = currentLis.some((li, idx) => li.dataset.userid !== desiredOrder[idx]);
 
-                if (orderChanged) {
-                    const frag = document.createDocumentFragment();
-                    for (const id of desiredOrder) {
-                        const li = Dom.columns.querySelector(`.data-item[data-userid="${id}"]`);
-                        if (li) frag.appendChild(li);
-                    }
-                    Dom.columns.appendChild(frag);
+                // 1) Mesure positions AVANT (déjà fait plus haut dans ton code via prevPos)
+
+                // 2) Appliquer l'ordre visuel uniquement
+                for (let i = 0; i < desiredOrder.length; i++) {
+                    const id = desiredOrder[i];
+                    const li = Dom.columns.querySelector(`.data-item[data-userid="${id}"]`);
+                    if (li) li.style.order = String(i);
                 }
 
+                // 3) Mesure APRES + FLIP
                 currentLis.forEach((li) => {
                     const uid = li.dataset.userid;
                     const prevTop = prevPos.get(uid);
@@ -384,7 +384,6 @@
                             requestAnimationFrame(() => {
                                 li.style.transition = "transform 0.25s ease";
                                 li.style.transform = "";
-                                li.addEventListener("transitionend", () => (li.style.pointerEvents = ""), { once: true });
                             });
                         }
                     }

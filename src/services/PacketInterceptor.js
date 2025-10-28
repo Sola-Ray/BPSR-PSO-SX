@@ -1,4 +1,4 @@
-import cap from 'cap';
+﻿import cap from 'cap';
 import zlib from 'zlib';
 import logger from './Logger.js';
 import userDataManager from './UserDataManager.js';
