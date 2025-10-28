@@ -46,9 +46,9 @@ class UserDataManager {
         }, 10 * 1000);
 
         // Clean des joueurs inactifs
-        setInterval(() => {
+        /*setInterval(() => {
             this.cleanUpInactiveUsers();
-        }, 30 * 1000);
+        }, 30 * 1000);*/
     }
 
     /* ───────────────────────── lifecycle ───────────────────────── */
@@ -170,14 +170,14 @@ class UserDataManager {
     addDamage(uid, skillId, element, damage, isCrit, isLucky, isCauseLucky, hpLessenValue = 0, targetUid) {
         if (config.IS_PAUSED) return;
         if (config.GLOBAL_SETTINGS.onlyRecordEliteDummy && targetUid !== 75) return;
-        this.checkTimeoutClear();
+        //this.checkTimeoutClear();
         const user = this.getUser(uid);
         user.addDamage(skillId, element, damage, isCrit, isLucky, isCauseLucky, hpLessenValue);
     }
 
     addHealing(uid, skillId, element, healing, isCrit, isLucky, isCauseLucky, targetUid) {
         if (config.IS_PAUSED) return;
-        this.checkTimeoutClear();
+        //this.checkTimeoutClear();
         if (uid !== 0) {
             const user = this.getUser(uid);
             user.addHealing(skillId, element, healing, isCrit, isLucky, isCauseLucky);
@@ -186,7 +186,7 @@ class UserDataManager {
 
     addTakenDamage(uid, damage, isDead) {
         if (config.IS_PAUSED) return;
-        this.checkTimeoutClear();
+        //this.checkTimeoutClear();
         const user = this.getUser(uid);
         user.addTakenDamage(damage, isDead);
     }
@@ -396,14 +396,14 @@ class UserDataManager {
         }
     }
 
-    checkTimeoutClear() {
+    /*checkTimeoutClear() {
         if (!config.GLOBAL_SETTINGS.autoClearOnTimeout || this.lastLogTime === 0 || this.users.size === 0) return;
         const currentTime = Date.now();
         if (this.lastLogTime && currentTime - this.lastLogTime > 15000) {
             this.clearAll();
             logger.info('Timeout reached, statistics cleared!');
         }
-    }
+    }*/
 
     getGlobalSettings() {
         return config.GLOBAL_SETTINGS;
