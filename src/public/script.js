@@ -689,14 +689,12 @@
             });
 
             State.socket.on('session_started', (data) => {
-                //console.log('Nouvelle session:', data);
                 setServerStatus('cleared');
                 State.users = {};
                 Renderer.renderDataList([], State.activeTab);
             });
 
             State.socket.on('session_changed', (data) => {
-                //console.log('Instance changée:', data);
                 setServerStatus('cleared');
                 State.users = {};
                 Renderer.renderDataList([], State.activeTab);
