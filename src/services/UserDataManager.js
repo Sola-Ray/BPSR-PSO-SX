@@ -424,7 +424,7 @@ class UserDataManager {
         const totalDamage = Number(sum.total_damage?.total || 0);
         const totalHeal = Number(sum.total_healing?.total || 0);
 
-        // skip si aucun dégât/soin
+        // skip si peu de dégâts/soins
         if (totalDamage <= 5000 && totalHeal <= 5000) return null;
 
         const skills = u.getSkillSummary() || {};
