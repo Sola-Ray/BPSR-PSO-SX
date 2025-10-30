@@ -1,12 +1,12 @@
-import { BrowserWindow, screen } from 'electron';
-import { fileURLToPath } from 'url';
-import path from 'path';
-import fs from 'fs';
+const { BrowserWindow, screen } = require('electron');
+/* ESM fileURLToPath removed in CJS */
+const path = require('path');
+const fs = require('fs');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-const iconPath = path.join(__dirname, '../resources/app.ico');
+const iconPath = fs.existsSync(path.join(__dirname, '../resources/app.ico'))
+  ? path.join(__dirname, '../resources/app.ico')
+  : path.join(process.cwd(), 'resources', 'app.ico');
 const preloadPath = path.join(__dirname, '../preload.cjs');
 const htmlPath = path.join(__dirname, '../public/index.html');
 const configPath = path.join(__dirname, '../../windowConfig.json');
@@ -192,4 +192,6 @@ class Window {
 }
 
 const window = new Window();
-export default window;
+module.exports = window;
+
+if (module && module.exports && module.exports !== exports) { module.exports.default = module.exports; }
